@@ -39,8 +39,11 @@ const GRAPH_API_VERSION = 'v21.0';
 /**
  * Obtiene el ID de la cuenta de Instagram Business conectada a la página de Facebook si no está en .env
  */
-async function getInstagramAccountId(pageId, accessToken) {
-  if (process.env.INSTAGRAM_ACCOUNT_ID) {
+async function getInstagramAccountId(pageId, accessToken, explicitIgId = null) {
+  if (explicitIgId) {
+    return explicitIgId;
+  }
+  if (process.env.INSTAGRAM_ACCOUNT_ID && pageId === process.env.META_PAGE_ID) {
     return process.env.INSTAGRAM_ACCOUNT_ID;
   }
 
@@ -62,17 +65,17 @@ async function getInstagramAccountId(pageId, accessToken) {
  * Publica un video como Reel en Instagram
  * 
  * @param {string} videoFilePath - Ruta local al archivo .mp4
- * @param {object} options - Opciones adicionales (caption, share_to_feed, cover_url)
+ * @param {object} options - Opciones adicionales (caption, share_to_feed, pageId, igAccountId, accessToken)
  */
 async function publishReelToInstagram(videoFilePath, options = {}) {
-  const pageId = process.env.META_PAGE_ID;
-  const accessToken = process.env.META_PAGE_ACCESS_TOKEN || process.env.META_USER_ACCESS_TOKEN;
+  const pageId = options.pageId || process.env.META_PAGE_ID;
+  const accessToken = options.accessToken || process.env.META_PAGE_ACCESS_TOKEN || process.env.META_USER_ACCESS_TOKEN;
 
   if (!accessToken) {
     throw new Error('Falta META_PAGE_ACCESS_TOKEN en las variables de entorno.');
   }
 
-  const igAccountId = await getInstagramAccountId(pageId, accessToken);
+  const igAccountId = await getInstagramAccountId(pageId, accessToken, options.igAccountId);
   if (!igAccountId) {
     throw new Error('No se encontró INSTAGRAM_ACCOUNT_ID ni se pudo deducir de META_PAGE_ID. Asegúrate de vincular tu cuenta de Instagram profesional a tu página de Facebook.');
   }

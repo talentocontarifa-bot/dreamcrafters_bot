@@ -24,12 +24,12 @@ const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v21.0';
  * Publica un Reel o Video vertical en la Página de Facebook de Dreamcrafters.
  * Intenta primero el endpoint oficial de Reels (/video_reels) y hace fallback a /videos.
  */
-async function publishVideoToFacebook(videoFilePath, { title = '', description = '' } = {}) {
-  const pageId = process.env.META_PAGE_ID;
-  const accessToken = process.env.META_PAGE_ACCESS_TOKEN;
+async function publishVideoToFacebook(videoFilePath, { title = '', description = '', pageId: customPageId, accessToken: customToken, label = 'Facebook' } = {}) {
+  const pageId = customPageId || process.env.META_PAGE_ID;
+  const accessToken = customToken || process.env.META_PAGE_ACCESS_TOKEN;
 
   if (!pageId || !accessToken) {
-    throw new Error('Faltan META_PAGE_ID o META_PAGE_ACCESS_TOKEN en dreamcrafter/.env');
+    throw new Error(`Faltan credenciales de Facebook (${label}): pageId o accessToken`);
   }
   if (!fs.existsSync(videoFilePath)) {
     throw new Error(`No existe el archivo de video: ${videoFilePath}`);
@@ -39,7 +39,7 @@ async function publishVideoToFacebook(videoFilePath, { title = '', description =
 
   // 1. Intentar subida como Facebook Reel (/video_reels)
   try {
-    console.log('📘 [Facebook Reels] Iniciando sesión de carga en Meta Graph API...');
+    console.log(`📘 [${label} Reels] Iniciando sesión de carga en Meta Graph API (Page ID: ${pageId})...`);
     const startRes = await axios.post(`https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/video_reels`, {
       upload_phase: 'start',
       access_token: accessToken
