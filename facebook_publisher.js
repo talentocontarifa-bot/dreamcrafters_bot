@@ -16,7 +16,9 @@ try {
 } catch (e) {
   FormData = require(path.join(__dirname, '..', 'talento_con_tarifa_bot', 'video_tct', 'node_modules', 'form-data'));
 }
-require(path.join(__dirname, '..', 'rattle', 'node_modules', 'dotenv')).config({ path: path.join(__dirname, '.env') });
+try {
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
+} catch (e) {}
 
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v21.0';
 

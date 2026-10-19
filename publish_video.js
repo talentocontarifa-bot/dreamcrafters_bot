@@ -28,7 +28,7 @@ const VIDEO_PATH = process.env.VIDEO_PATH || path.join(__dirname, 'out', 'video_
 const LINKS = {
   mainSite: 'https://dreamcrafters.lat',
   marioDemo: 'https://dreamcrafters.lat/invitacionmario/index.html',
-  spaDemo: 'https://dreamcrafters.lat/invitacionspa/index.html',
+  agentesDemo: 'https://dreamcrafters.lat/agentes_de_luz',
   tctSite: 'https://talentocontarifa.lat'
 };
 
@@ -46,7 +46,7 @@ const DREAMCRAFTERS_CAPTION = [
   '🟩 ¡CREA GRATIS LA INVITACIÓN DE MINECRAFT EN 60 SEGUNDOS!',
   `👉 Crea la tuya aquí: ${LINKS.mainSite}`,
   `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
-  `👑 Ver demo de Spa Party & Glow: ${LINKS.spaDemo}`,
+  `⚡ Ver evento interactivo Agentes de Luz: ${LINKS.agentesDemo}`,
   '',
   '#DreamCrafters #InvitacionesDigitales #SuperMarioGalaxy #MinecraftParty #FiestasInfantiles #InvitacionesInteractivas #CumpleañosInfantiles'
 ].join('\n');
@@ -61,7 +61,7 @@ const TCT_CROSSPROMO_CAPTION = [
   '🔗 LIGAS OFICIALES PARA PROBARLO HOY:',
   `👉 Sitio Web + Creador GRATIS de Minecraft: ${LINKS.mainSite}`,
   `🕹️ Juega la invitación de Super Mario Galaxy: ${LINKS.marioDemo}`,
-  `👑 Mira la invitación de Spa Party: ${LINKS.spaDemo}`,
+  `⚡ Mira el pase interactivo Agentes de Luz: ${LINKS.agentesDemo}`,
   '',
   '─────────────────────────',
   '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
