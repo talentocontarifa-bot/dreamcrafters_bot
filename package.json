@@ -1,0 +1,17 @@
+{
+  "name": "dreamcrafters-marketing-bot",
+  "version": "1.0.0",
+  "description": "Generador automatizado de Reels de DreamCrafters con Toon Maker + Chatterbox TTS Local + Playwright Mobile",
+  "main": "publish_video.js",
+  "scripts": {
+    "capture": "python capture_real_mario_mobile.py",
+    "render": "python render_dreamcrafters_video.py --output out/video_final_dreamcrafters.mp4",
+    "publish": "node publish_video.js",
+    "check-config": "node publish_video.js --check-config"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "form-data": "^4.0.1"
+  }
+}

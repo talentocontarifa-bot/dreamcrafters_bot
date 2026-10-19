@@ -1,0 +1,58 @@
+{
+  "character_id": "char_02",
+  "display_name": "MARIO // DREAMCRAFTERS",
+  "tagline": "INVITACIONES VIDEOJUEGO INTERACTIVAS",
+  "closing_signature": "DREAMCRAFTERS.LAT",
+  "assets": {
+    "source_video": "mario_green_screen.mp4",
+    "background_image": "",
+    "bgm_audio": "C:/Users/rufin/.gemini/antigravity/playground/dreamcrafters/public/invitacionmario/mario_galaxy_theme.mp3",
+    "lcd_font": "assets/VT323-Regular.ttf",
+    "hud_font": "assets/ShareTechMono-Regular.ttf"
+  },
+  "rig": {
+    "frame_ladder": [16, 14, 162, 160, 24, 34, 90, 96, 180, 48, 144, 192, 216, 132, 66, 210],
+    "phonetic_mode": true,
+    "blend_mode": "snap",
+    "focus_center": [360, 281],
+    "slew_up": 0.45,
+    "slew_down": 0.30,
+    "shots": {
+      "FULL": { "zoom": 1.0, "focus_y": 640 },
+      "MEDIUM": { "zoom": 1.35, "focus_y": 380 },
+      "CLOSE": { "zoom": 1.75, "focus_y": 245 }
+    }
+  },
+  "voice": {
+    "engine": "elevenlabs",
+    "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
+    "model_id": "eleven_v4_turbo",
+    "voice_name": "es-MX-JorgeNeural",
+    "rate": "+4%",
+    "pitch": "-4Hz",
+    "dsp_preset": "studio_broadcast",
+    "bgm_volume": 0.14
+  },
+  "visual_fx": {
+    "theme_name": "dreamcrafters",
+    "brand_preset": "dreamcrafters_a",
+    "glitch_fx": false,
+    "primary_bgr": [248, 189, 56],
+    "secondary_bgr": [21, 204, 250],
+    "bg_tint_bgr": [16, 13, 11],
+    "bg_tint_strength": 0.0,
+    "character_rgb_split_px": 0,
+    "show_hud": false,
+    "show_top_banner": false,
+    "show_subtitles_box": false,
+    "show_lower_thirds": true,
+    "show_outro_curtain": true,
+    "digital_dust": false,
+    "dust_count": 36,
+    "front_vignette": true,
+    "scanlines": false,
+    "hud_top_title": "DREAMCRAFTERS.LAT // INVITACIONES JUGABLES",
+    "hud_bottom_prefix": "DREAMCRAFTERS.LAT"
+  },
+  "content_plugin": ""
+}

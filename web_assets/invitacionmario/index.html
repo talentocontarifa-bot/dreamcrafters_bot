@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>¡Cosmic Celebration!</title>
+    <!-- Fonts: Use a bold cinematic font and a technical font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&family=Rajdhani:wght@500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Removed canvas-confetti CDN for privacy/tracking prevention reasons. Now bundled. -->
+    <script type="module" crossorigin src="/invitacionmario/assets/index-BzLgwDAa.js"></script>
+    <link rel="stylesheet" crossorigin href="/invitacionmario/assets/index-BhJOKptm.css">
+    
+    <style>
+      /* --- CORRECCIONES VISUALES (SOBRE-ESCRITURAS) --- */
+      
+      /* 1. Prevenir que el nombre se encime con la imagen */
+      .hero-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding-top: 15vh;
+          gap: 15px;
+          position: relative;
+          z-index: 10;
+      }
+      .hero-title-img {
+          margin: 0 auto !important;
+          width: 90% !important;
+          max-width: 400px;
+          position: relative !important;
+      }
+      .mario-galaxy-name {
+          position: relative !important;
+          margin: 0 !important;
+          font-size: clamp(2.5rem, 8vw, 4rem) !important;
+          line-height: 1.1 !important;
+          z-index: 10;
+      }
+      .neon-age-text {
+          position: relative !important;
+          margin: 0 !important;
+          z-index: 10;
+      }
+      
+      /* Enviar a Mario detrás de los textos, pero más arriba */
+      .floating-mario {
+          z-index: 1 !important;
+          top: 2% !important;
+      }
+
+      /* 2. Mejorar la lectura frente a la galaxia (Reducir glow excesivo, añadir sombra oscura) */
+      .mario-galaxy-name, 
+      .neon-age-text, 
+      .info-value, 
+      #directivesTitle {
+          text-shadow: 
+            0 0 10px rgba(0,0,0,0.9), 
+            0 0 20px rgba(0,0,0,0.9),
+            3px 3px 6px rgba(0,0,0,1),
+            -2px -2px 0 #000, 
+            2px -2px 0 #000, 
+            -2px 2px 0 #000, 
+            2px 2px 0 #000 !important;
+      }
+      
+      /* Color amarillo para la fecha */
+      .neon-date {
+          color: #ffdc3b !important;
+          text-shadow: 
+            0 0 10px rgba(255, 220, 59, 0.5), 
+            2px 2px 4px #000,
+            -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000 !important;
+      }
+      
+      /* Asegurar que el texto del mapa se lea bien */
+      .info-value {
+          font-weight: 800 !important;
+          letter-spacing: 0.5px;
+      }
+      
+      .info-label {
+          text-shadow: 1px 1px 2px black !important;
+          font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+     <!-- PRELOADER / GAME SCREEN -->
+    <div id="game-view" class="view active">
+      <!-- We use the provided preloader image as background, but CSS overlay to make it dark/interactive -->
+      <div id="game-bg"></div>
+      
+      <!-- Canvas fills the entire screen for parallax & dino game -->
+      <canvas id="game-canvas"></canvas>
+
+      <!-- The UI Overlay before starting -->
+      <div id="game-ui-intro" class="game-ui fade-out-on-start" style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 5vh; z-index: 10; position: relative;">
+        <img src="/invitacionmario/Lumalee.webp" class="lumalee-star pulse" alt="Lumalee" style="margin-bottom: 0; width: 80px;">
+        <h1 class="start-mission-text" style="font-size: 2.8rem; margin: 15px 0;">INICIAR MISIÓN</h1>
+        <h2 style="font-size: 1.6rem; color: #ffdc3b; text-shadow: 0 0 15px #ffdc3b; animation: pulseGlow 1.5s infinite alternate; margin-bottom: 25px; font-family: var(--font-ui); letter-spacing: 1px;">¡HAZ CLICK O TOCA PARA EMPEZAR!</h2>
+        
+        <!-- Score target -->
+        <div class="mission-briefing" style="padding: 15px 25px; margin-top: 0; width: auto; max-width: 90%;">
+          <h2 class="briefing-title" style="font-size: 1rem; margin-bottom: 5px;">REPORTE DE MISIÓN</h2>
+          <p class="briefing-p highlight-p" style="font-size: 0.95rem; font-weight: bold; margin: 0;">Consigue <span id="target-score">50</span> puntos para descubrir el evento.</p>
+        </div>
+      </div>
+      
+      <!-- In-game HUD (visible while playing) -->
+      <div id="game-hud" class="hidden pixel-hud">
+        <div class="hud-item hud-big"><img src="/invitacionmario/Mario_coin.webp" style="height:35px; width:35px; vertical-align:middle; margin-right:5px; margin-top:-5px;" /> <span id="current-score" class="hud-num">000</span> / 50 PTS</div>
+        <div class="hud-skip">
+            <button id="skip-btn" class="pixel-btn">SKIP</button>
+        </div>
+      </div>
+      
+      <!-- Action Marquee for Game -->
+      <div id="game-marquee" class="bottom-marquee hidden">
+         <div class="marquee-content">
+            ⭐ LOGRALO, VENCE A TODOS LOS ENEMIGOS Y DESCUBRE EL SECRETO ESTELAR ⭐ ¡TÚ ERES EL ELEGIDO! ⭐
+         </div>
+      </div>
+    </div>
+
+    <!-- MAIN LANDING PAGE -->
+    <div id="landing-view" class="view hidden">
+      <!-- The very top background fades into deep space -->
+      <div class="landing-bg-top"></div>
+      <img src="/invitacionmario/Mario_floating.webp" class="floating-mario" alt="Mario Floating">
+      
+      <div class="container pb-10 mt-10">
+        <!-- Hero Content -->
+        <header class="text-center slide-in-up" style="position: relative;">
+          <div class="hero-content">
+            <img src="/invitacionmario/feliz_cumpleanos.webp" class="hero-title-img" alt="Feliz Cumpleaños">
+            <h1 class="mario-galaxy-name">DARIO</h1>
+            <h2 class="neon-age-text">¡CUMPLE 6 AÑOS!</h2>
+          </div>
+        </header>
+
+        <!-- PANEL 1: COUNTDOWN -->
+        <section class="scifi-panel slide-in-up delay-1">
+          <div class="scifi-tab">COUNTDOWN</div>
+          <div class="panel-content col" style="gap:20px;">
+          
+             <!-- EVENT DATE (MOVED INSIDE) -->
+             <div class="text-center" style="margin-top: -10px;">
+                <h3 class="neon-date">SÁBADO 24 DE MAYO 2026</h3>
+             </div>
+
+             <div class="countdown-box glow-box" style="width: 100%; border: 2px solid #48e2ff; padding: 25px 15px;">
+                <div class="time-col">
+                  <span class="time-num" id="days" style="font-size: 3rem;">00</span>
+                  <span class="time-label" style="font-size: 1rem;">DÍAS</span>
+                </div>
+                <div class="time-sep" style="font-size: 2.5rem; transform: translateY(-10px);">:</div>
+                <div class="time-col">
+                  <span class="time-num" id="hours" style="font-size: 3rem;">00</span>
+                  <span class="time-label" style="font-size: 1rem;">HRS</span>
+                </div>
+                <div class="time-sep" style="font-size: 2.5rem; transform: translateY(-10px);">:</div>
+                <div class="time-col">
+                  <span class="time-num" id="minutes" style="font-size: 3rem;">00</span>
+                  <span class="time-label" style="font-size: 1rem;">MINS</span>
+                </div>
+             </div>
+             <div style="display:flex; flex-direction:column; width: 100%;">
+               <button id="btn-add-calendar" class="scifi-btn" style="width: 100%; min-height: 48px; border-radius: 8px;">📅 AGENDAR</button>
+             </div>
+          </div>
+        </section>
+
+        <!-- PANEL 2: NAVIGATION LOG -->
+        <section class="scifi-panel slide-in-up delay-2">
+          <div class="scifi-tab">NAVIGATION LOG</div>
+          <div class="panel-content col">
+             <div class="tab-inner">GALACTIC CHART</div>
+             
+             <!-- Map Embed -->
+             <div style="text-align: center; margin: 25px 0; border-radius: 10px; overflow: hidden; border: 2px solid #48e2ff44; box-shadow: 0 0 15px #48e2ff40;">
+                <iframe id="map-iframe" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14932.186641604085!2d-103.3860010959074!3d20.6677!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8428b0304f5e7141%3A0x15f79ee89d978a3f!2sGlorieta%20La%20Minerva!5e0!3m2!1sen!2smx!4v1712711018596!5m2!1sen!2smx" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+             </div>
+             
+             <div class="coords-row" style="flex-direction: column; align-items: center; gap: 20px;">
+               <img src="/invitacionmario/Map_icon.webp" alt="Map Icon" style="width: 80px; margin-bottom: -10px;">
+               <div style="text-align: center;">
+                 <span class="info-label" style="font-size: 1.2rem; display:block; margin-bottom: 5px;">BASE ESTELAR (LOCACIÓN)</span>
+                 <span class="info-value" style="font-size: 1.5rem; text-shadow: 0 0 10px #ffdc3b;">Salón "Estrella", Av. Galaxia Sur 123</span>
+                 <span class="info-label" style="font-size: 1.2rem; display:block; margin-bottom: 5px; margin-top: 15px;">HORA DEL EVENTO</span>
+                 <span class="info-value" style="font-size: 1.5rem;">16:00 - 20:00 PM</span>
+               </div>
+             </div>
+          </div>
+        </section>
+
+        <!-- PANEL 3: DRESS CODE -->
+        <section class="scifi-panel slide-in-up delay-3">
+          <div class="scifi-tab">SPACE DIRECTIVES</div>
+          <div class="panel-content text-center">
+             <div id="directivesTitle" class="tab-inner">TRAJE ESPACIAL</div>
+             <img src="/invitacionmario/Yoshi.webp" alt="Yoshi" style="width: 140px; margin-bottom: 20px; filter: drop-shadow(0 0 15px #48e2ff66);">
+             <p id="directivesText" style="font-size:0.9rem; color:#d0d0e0; margin-bottom: 20px;">
+                ¡Festejaremos al puro estilo cósmico! <strong>¡Por favor no olvides traer tu traje de baño, toalla y bloqueador!</strong> Porque nos espera una increíble y divertida <strong>Piscina Intergaláctica (albercada)</strong>.<br><br>
+                <strong style="color:var(--yellow)">¡Habrá power-ups acuáticos para todos!</strong>
+             </p>
+          </div>
+        </section>
+
+        <!-- PANEL 4: COMMUNICATIONS LINK -->
+        <section class="scifi-panel slide-in-up delay-3" style="animation-delay: 0.8s;">
+          <div class="scifi-tab">COMMUNICATIONS LINK</div>
+          <div class="panel-content col">
+             <div class="tab-inner">MISSION LOG</div>
+             
+             <div class="input-row">
+               <div class="input-group">
+                 <label>NOMBRE DEL HÉROE</label>
+                 <input type="text" placeholder="Tu nombre..." class="scifi-input" id="guestNameInput">
+               </div>
+               <div class="input-group">
+                 <label>EQUIPO ESPECIAL (ALERGIAS)</label>
+                 <input type="text" placeholder="Ninguna..." class="scifi-input" id="guestAllergiesInput">
+               </div>
+             </div>
+             
+             <div class="slider-group mt-4">
+               <label>STAR BITS (ACOMPAÑANTES)</label>
+               <div class="custom-slider-container">
+                 <input type="range" min="1" max="5" value="3" class="scifi-slider" id="guestCount">
+                 <span class="slider-val" id="guestCountOut">3</span>
+               </div>
+             </div>
+             
+             <div class="text-center mt-6 row2">
+               <button id="btn-rsvp-yes" class="scifi-btn scifi-btn-large" style="flex:2">SÍ, ASISTIRÉ 🚀</button>
+               <button id="btn-rsvp-no" class="scifi-btn scifi-btn-large" style="flex:1; background: #333; box-shadow:none; border-color:#555">NO PUEDO</button>
+             </div>
+          </div>
+        </section>
+
+        <!-- DREAMCRAFTERS FOOTER -->
+        <div class="dc-footer text-center slide-in-up delay-3">
+           <p class="dc-powered">POWERED BY DREAMCRAFTERS</p>
+           <a href="https://mpago.la/2QmNo6M" target="_blank" class="dc-action mp-btn" id="mp-payment-link">
+             ¡QUIERO MI INVITACIÓN! 💳
+           </a>
+        </div>
+       </div>
+    </div>
+    
+    <!-- MAP MODAL POPUP -->
+    <div id="map-modal" class="map-modal hidden">
+      <div class="map-modal-content glow-box">
+        <span class="close-map-btn" id="btn-close-map">&times;</span>
+        <h2 style="margin-bottom: 15px; font-size:1.2rem; text-align:center; font-family: 'Press Start 2P', cursive; color:#48e2ff; letter-spacing:1px; line-height: 1.5;">DESTINO ESTELAR</h2>
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3732.923485642878!2d-103.38885142491517!3d20.67261948088921!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8428b0304f5e7141%3A0x15f79ee89d978a3f!2sGlorieta%20La%20Minerva!5e0!3m2!1sen!2smx!4v1712711018596!5m2!1sen!2smx" width="100%" height="300" style="border:0; border-radius: 8px;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+    
+    <!-- FIX DE GOOGLE MAPS PARA LINKS CORTOS -->
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const mapLink = urlParams.get('mapEmbed');
+          
+          if (mapLink && !mapLink.includes('<iframe') && !mapLink.includes('embed')) {
+             // Si el cliente puso un link normal (ej. https://maps.app.goo.gl/...)
+             // Los iframes de Google Maps darán error porque no permiten ser incrustados.
+             // Solución: Reemplazamos los iframes por un botón gigante.
+             document.querySelectorAll('iframe').forEach(iframe => {
+                const btnContainer = document.createElement('div');
+                btnContainer.style.padding = '20px';
+                
+                const btn = document.createElement('a');
+                btn.href = mapLink;
+                btn.target = "_blank";
+                btn.className = "scifi-btn";
+                btn.style.cssText = "display: block; width: 100%; padding: 18px; text-align: center; font-size: 1.1rem; background: linear-gradient(90deg, #1f6487, #06b6d4); color: white; text-decoration: none; border-radius: 12px; font-family: 'Rajdhani', sans-serif; font-weight: bold; letter-spacing: 1px; box-shadow: 0 0 20px rgba(6,182,212,0.4);";
+                btn.innerHTML = "🗺️ ABRIR EN GOOGLE MAPS";
+                
+                btnContainer.appendChild(btn);
+                
+                if(iframe.parentNode) {
+                   iframe.parentNode.replaceChild(btnContainer, iframe);
+                }
+             });
+          }
+        }, 1000); // Dar tiempo a que el script compilado reaccione primero
+      });
+    </script>
+  </body>
+</html>

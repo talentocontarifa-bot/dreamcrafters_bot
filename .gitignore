@@ -1,0 +1,10 @@
+.env
+.env.*
+node_modules/
+__pycache__/
+*.pyc
+out/
+characters/*/out/real_mobile_capture/
+characters/*/out/*.mp4
+characters/*/out/*.wav
+!characters/*/out/cloned_voice_cache/*.wav
