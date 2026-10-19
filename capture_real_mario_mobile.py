@@ -87,26 +87,32 @@ def capture_all():
         )
 
         page.goto(url, wait_until="networkidle")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(1200)
 
         print("1/4 Capturando pantalla inicial #game-view (INICIAR MISION)...")
         for f_idx in range(34):
             page.wait_for_timeout(40)
             page.screenshot(path=os.path.join(OUT_CAP_DIR, "gameplay", f"frame_{f_idx:04d}.png"))
 
-        print("2/4 Capturando minijuego real en #game-canvas...")
-        page.mouse.click(195, 360)
-        page.wait_for_timeout(100)
+        print("2/4 Capturando minijuego real en #game-canvas (Starlight Stage + Cometas + Chispas)...")
+        try:
+            page.evaluate("() => { const btn = document.getElementById('start-game-btn'); if (btn) btn.click(); }")
+        except Exception:
+            page.mouse.click(195, 480)
+        page.wait_for_timeout(120)
 
         for f_idx in range(34, 192):
-            if f_idx % 24 == 0 and f_idx > 55:
+            if f_idx % 22 == 0 and f_idx > 48:
                 page.keyboard.press("Space")
             prog_pts = min(50, int(((f_idx - 34) / 145.0) * 52))
+            prog_pct = min(100, int((prog_pts / 50.0) * 100))
             try:
                 page.evaluate(
                     f"""() => {{
                         const el = document.getElementById('current-score');
                         if (el) el.innerText = String({prog_pts}).padStart(3, '0');
+                        const bar = document.getElementById('hud-progress-bar');
+                        if (bar) bar.style.width = '{prog_pct}%';
                     }}"""
                 )
             except Exception:
@@ -134,7 +140,7 @@ def capture_all():
         except Exception:
             pass
 
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(600)
         max_scroll = page.evaluate(
             """() => {
                 const lv = document.getElementById('landing-view');
@@ -163,11 +169,11 @@ def capture_all():
             page.wait_for_timeout(30)
             page.screenshot(path=os.path.join(OUT_CAP_DIR, "unlocked", f"frame_{f_idx:04d}.png"))
 
-        print("4/4 Capturando https://dreamcrafters.lat en modo movil y d-icon.svg...")
+        print("4/4 Capturando https://dreamcrafters.lat actualizado en modo movil y d-icon.svg...")
         try:
-            page.goto("https://dreamcrafters.lat", wait_until="domcontentloaded", timeout=20000)
-            page.wait_for_timeout(1200)
-            max_s = page.evaluate("() => Math.min(2200, document.documentElement.scrollHeight - window.innerHeight)")
+            page.goto("https://dreamcrafters.lat", wait_until="networkidle", timeout=25000)
+            page.wait_for_timeout(1500)
+            max_s = page.evaluate("() => Math.min(2400, document.documentElement.scrollHeight - window.innerHeight)")
             for i in range(96):
                 u = min(1.0, max(0.0, (i - 12) / 76.0))
                 ease = u * u * (3.0 - 2.0 * u)

@@ -67,11 +67,12 @@ jobs:
           path: |
             ~/.cache/huggingface/hub
             characters/02_mario/out/cloned_voice_cache
-          key: chatterbox-mtl-v1-${{ hashFiles('render_dreamcrafters_video.py') }}
+          key: chatterbox-mtl-v2-${{ hashFiles('render_dreamcrafters_video.py', 'toon_host/mario_modular_rig.py') }}
           restore-keys: |
+            chatterbox-mtl-v2-
             chatterbox-mtl-v1-
 
-      - name: Instalar FFmpeg, Rhubarb Lip-Sync, Playwright y Chatterbox TTS Local
+      - name: Instalar FFmpeg, Playwright y Chatterbox TTS Local (MarioModularRig v2)
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg unzip curl fonts-dejavu-core fonts-liberation
@@ -80,9 +81,6 @@ jobs:
           pip install --no-deps chatterbox-tts
           pip install opencv-python-headless numpy pillow playwright librosa s3tokenizer resemble-perth conformer==0.3.2 safetensors pyloudnorm omegaconf pykakasi==2.3.0 diffusers==0.29.0 transformers huggingface-hub
           playwright install --with-deps chromium
-          curl -fsSL https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.13.0/Rhubarb-Lip-Sync-1.13.0-Linux.zip -o /tmp/rhubarb.zip
-          sudo unzip -q /tmp/rhubarb.zip -d /opt/rhubarb
-          sudo ln -sf /opt/rhubarb/Rhubarb-Lip-Sync-1.13.0-Linux/rhubarb /usr/local/bin/rhubarb
           npm install
 
       - name: Validar configuración de publicación Meta
@@ -92,7 +90,7 @@ jobs:
       - name: Capturar Invitación Real en Modo Celular (Playwright Chromium)
         run: python capture_real_mario_mobile.py
 
-      - name: Clonar Voz Localmente (Chatterbox TTS) y Renderizar Video con Toon Maker
+      - name: Clonar Voz Localmente y Renderizar Video con MarioModularRig v2 (2K Simétrico)
         run: |
           mkdir -p out
           python render_dreamcrafters_video.py --output out/video_final_dreamcrafters.mp4

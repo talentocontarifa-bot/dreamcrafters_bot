@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-render_dreamcrafters_video.py — Motor Oficial de Video Promocional DreamCrafters
-================================================================================
-- Clonación de Voz 100% Local (PyTorch `ChatterboxMultilingualTTS` de `chatterbox-tts`),
+render_dreamcrafters_video.py — Motor Oficial de Video Promocional DreamCrafters (Toon Maker v2 Modular)
+========================================================================================================
+- Rig Modular 2K Simétrico de Cuerpo Completo (`MarioModularRig` en `characters/02_mario/modular_rig_v2`):
+  * 9 Cabezas 2K con Lip-Sync y Parpadeo Hablando (`00:MBP` a `08:BLINK_TALK`).
+  * 5 Poses de Cuerpo Completo 100% Frontales y Simétricas (`00: neutral`, `04: thumbs`, `06: hips`,
+    `07: palms`, `08: fists`) con eje vertical central bloqueado (`x = 380`).
+- Clonación de Voz 100% Local (`ChatterboxMultilingualTTS` con la entonación original `exaggeration=0.55`),
   sin llamadas externas a Gradio Spaces.
 - Intro rápido (1.3s) con el ícono "D" (`d-icon.svg`) animado + transición al header.
 - Invitación real `/invitacionmario/index.html` y `dreamcrafters.lat` renderizadas en
@@ -15,6 +19,7 @@ import glob
 import math
 import json
 import wave
+import shutil
 import hashlib
 import argparse
 import subprocess
@@ -27,9 +32,10 @@ TOON_HOST_DIR = os.path.join(REPO_ROOT, "toon_host")
 if TOON_HOST_DIR not in sys.path:
     sys.path.insert(0, TOON_HOST_DIR)
 
-from toon_packager import ToonPackager
+from mario_modular_rig import MarioModularRig
 
 CHAR_02_DIR = os.path.join(REPO_ROOT, "characters", "02_mario")
+MODULAR_RIG_DIR = os.path.join(CHAR_02_DIR, "modular_rig_v2")
 WEB_ASSETS_DIR = os.path.join(REPO_ROOT, "web_assets")
 LANDING_DIR = os.path.join(WEB_ASSETS_DIR, "landing")
 REF_WAV = os.path.join(CHAR_02_DIR, "mario_ref_8s.wav")
@@ -76,6 +82,54 @@ SCENES_CLEAN = [
 ]
 
 
+def resolve_ffmpeg_path():
+    ff = shutil.which("ffmpeg")
+    if ff:
+        return ff
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return "ffmpeg"
+
+
+def mix_voice_with_bgm(voice_wav_path, bgm_path, output_wav_path, bgm_vol=0.12, ffmpeg_path="ffmpeg"):
+    if not bgm_path or not os.path.exists(bgm_path):
+        shutil.copyfile(voice_wav_path, output_wav_path)
+        return output_wav_path
+
+    filter_complex = (
+        f"[0:a]volume=1.0[v];"
+        f"[1:a]volume={bgm_vol:.3f},aloop=loop=-1:size=2e+09[b];"
+        f"[v][b]amix=inputs=2:duration=first:dropout_transition=2,alimiter=limit=0.96[out]"
+    )
+    subprocess.run(
+        [
+            ffmpeg_path,
+            "-y",
+            "-i",
+            voice_wav_path,
+            "-i",
+            bgm_path,
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[out]",
+            "-ac",
+            "1",
+            "-ar",
+            "24000",
+            "-c:a",
+            "pcm_s16le",
+            output_wav_path,
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return output_wav_path
+
+
 def generate_intro_chime_pcm(duration_sec=1.30, sr=24000):
     n_samples = int(duration_sec * sr)
     t = np.linspace(0.0, duration_sec, n_samples, endpoint=False)
@@ -96,7 +150,7 @@ def generate_intro_chime_pcm(duration_sec=1.30, sr=24000):
 def synthesize_cloned_scenes_local(scenes, ref_wav_path, output_wav_path, ffmpeg_path="ffmpeg"):
     """
     Clona la voz de `ref_wav_path` 100% localmente usando PyTorch + `ChatterboxMultilingualTTS`
-    (sin depender de Gradio Spaces externos), manteniendo caché por SHA-256 de cada línea.
+    con la entonación original validada (`exaggeration=0.55`), manteniendo caché por SHA-256.
     """
     cache_dir = os.path.join(CHAR_02_DIR, "out", "cloned_voice_cache")
     os.makedirs(cache_dir, exist_ok=True)
@@ -143,7 +197,7 @@ def synthesize_cloned_scenes_local(scenes, ref_wav_path, output_wav_path, ffmpeg
             wav_tensor = local_model.generate(
                 text=v_text,
                 language_id="es",
-                audio_prompt_path=None,  # Reutiliza los conditionals ya calculados de mario_ref_8s.wav
+                audio_prompt_path=None,
                 exaggeration=0.55,
                 cfg_weight=0.50,
                 temperature=0.72,
@@ -244,8 +298,9 @@ def get_font(size, bold=True, mono=False):
 
 
 class CleanDreamCraftersRenderer:
-    def __init__(self, packager):
-        self.tp = packager
+    def __init__(self, modular_rig, voice_analysis):
+        self.rig = modular_rig
+        self.va = voice_analysis
         self.W = 720
         self.H = 1280
 
@@ -272,14 +327,59 @@ class CleanDreamCraftersRenderer:
             f"unlocked={len(self.unlocked_frames)}, website={len(self.website_frames)}"
         )
 
+        # Base oscura cósmica estilo Super Mario Galaxy (#040613 -> #0c1c44)
         bg_arr = np.zeros((self.H, self.W, 3), dtype=np.uint8)
         y_grid, x_grid = np.ogrid[: self.H, : self.W]
-        dist = np.sqrt(((x_grid - self.W * 0.5) / 380.0) ** 2 + ((y_grid - self.H * 0.46) / 520.0) ** 2)
-        glow = np.clip(1.0 - dist, 0.0, 1.0) ** 1.6
-        bg_arr[:, :, 0] = (10 + glow * 16).astype(np.uint8)
-        bg_arr[:, :, 1] = (14 + glow * 26).astype(np.uint8)
-        bg_arr[:, :, 2] = (24 + glow * 50).astype(np.uint8)
+        dist = np.sqrt(((x_grid - self.W * 0.48) / 390.0) ** 2 + ((y_grid - self.H * 0.44) / 540.0) ** 2)
+        glow = np.clip(1.0 - dist, 0.0, 1.0) ** 1.55
+        dist2 = np.sqrt(((x_grid - self.W * 0.25) / 310.0) ** 2 + ((y_grid - self.H * 0.28) / 420.0) ** 2)
+        nebula = np.clip(1.0 - dist2, 0.0, 1.0) ** 2.0
+        bg_arr[:, :, 0] = np.clip(4 + glow * 14 + nebula * 24, 0, 255).astype(np.uint8)
+        bg_arr[:, :, 1] = np.clip(6 + glow * 26 + nebula * 12, 0, 255).astype(np.uint8)
+        bg_arr[:, :, 2] = np.clip(19 + glow * 58 + nebula * 42, 0, 255).astype(np.uint8)
         self.clean_dark_bg = Image.fromarray(bg_arr).convert("RGBA")
+
+        # Inicializar campo de estrellas, chispas cósmicas de 4 puntas y cometas estilo Mario Galaxy
+        rng = np.random.RandomState(2026)
+        palette_rgb = [
+            (255, 255, 255),
+            (255, 224, 85),
+            (56, 232, 255),
+            (255, 61, 127),
+        ]
+        self.cosmic_dots = []
+        for _ in range(70):
+            self.cosmic_dots.append(
+                {
+                    "x0": float(rng.uniform(0, self.W)),
+                    "y0": float(rng.uniform(0, self.H * 0.90)),
+                    "r": float(rng.uniform(1.0, 2.4)),
+                    "speed": float(rng.uniform(0.55, 2.1)),
+                    "phase": float(rng.uniform(0, math.pi * 2)),
+                    "twinkle": float(rng.uniform(0.08, 0.18)),
+                    "color": palette_rgb[int(rng.randint(0, len(palette_rgb)))],
+                }
+            )
+
+        self.cosmic_sparks = []
+        for _ in range(28):
+            self.cosmic_sparks.append(
+                {
+                    "x0": float(rng.uniform(20, self.W - 20)),
+                    "y0": float(rng.uniform(35, self.H * 0.86)),
+                    "size": float(rng.uniform(5.5, 11.5)),
+                    "phase": float(rng.uniform(0, math.pi * 2)),
+                    "pulse_speed": float(rng.uniform(0.07, 0.15)),
+                    "drift_speed": float(rng.uniform(0.35, 1.1)),
+                    "color": palette_rgb[int(rng.randint(0, len(palette_rgb)))],
+                }
+            )
+
+        self.comet_palettes = [
+            {"head": (255, 255, 255), "tail": (56, 232, 255)},
+            {"head": (255, 224, 85), "tail": (255, 224, 85)},
+            {"head": (255, 157, 226), "tail": (255, 61, 127)},
+        ]
 
         if self.party_bg:
             cv_party = cv2.cvtColor(np.array(self.party_bg.convert("RGB")), cv2.COLOR_RGB2BGR)
@@ -294,8 +394,104 @@ class CleanDreamCraftersRenderer:
         self.f_url = get_font(18, mono=True)
         self.f_intro_sub = get_font(21, bold=True, mono=True)
 
-    def render_logo_intro_frame(self, sc_prog):
+        self.last_pose_id = None
+        self.pose_change_frame = -999
+
+    def _draw_four_point_spark(self, draw_obj, cx, cy, size, color_rgb, alpha_float):
+        if alpha_float <= 0.05 or size < 1.5:
+            return
+        a_main = int(max(0, min(255, round(alpha_float * 255))))
+        a_glow = int(max(0, min(255, round(alpha_float * 95))))
+        r_glow = int(round(size * 1.35))
+        draw_obj.ellipse(
+            (cx - r_glow, cy - r_glow, cx + r_glow, cy + r_glow),
+            fill=color_rgb + (a_glow,),
+        )
+        inner = size * 0.24
+        pts = [
+            (cx, cy - size),
+            (cx + inner, cy - inner),
+            (cx + size, cy),
+            (cx + inner, cy + inner),
+            (cx, cy + size),
+            (cx - inner, cy + inner),
+            (cx - size, cy),
+            (cx - inner, cy - inner),
+        ]
+        draw_obj.polygon(pts, fill=color_rgb + (a_main,))
+
+    def render_cosmic_galaxy_bg(self, idx):
+        """
+        Replica el cielo estelar de la invitación de Super Mario Galaxy:
+        - Puntos estelares con parallax y parpadeo
+        - Chispas cósmicas de 4 puntas pulsantes (#ffe055, #38e8ff, #ffffff, #ff3d7f)
+        - Cometas fugaces diagonales con estela luminosa y cabeza de estrella de 4 puntas
+        """
         canvas = self.clean_dark_bg.copy()
+        overlay = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
+
+        # 1. Puntos estelares con parallax
+        for st in self.cosmic_dots:
+            x = (st["x0"] - idx * st["speed"]) % self.W
+            y = st["y0"]
+            tw = 0.45 + 0.55 * (0.5 + 0.5 * math.sin(idx * st["twinkle"] + st["phase"]))
+            alpha = int(round(235 * tw))
+            r = st["r"]
+            od.ellipse((x - r, y - r, x + r, y + r), fill=st["color"] + (alpha,))
+
+        # 2. Chispas cósmicas de 4 puntas pulsantes
+        for sp in self.cosmic_sparks:
+            x = (sp["x0"] - idx * sp["drift_speed"]) % self.W
+            y = sp["y0"]
+            s_val = math.sin(idx * sp["pulse_speed"] + sp["phase"])
+            alpha = 0.28 + 0.72 * (0.5 + 0.5 * s_val)
+            cur_size = sp["size"] * (0.72 + 0.34 * s_val)
+            self._draw_four_point_spark(od, x, y, cur_size, sp["color"], alpha)
+
+        # 3. Cometas fugaces diagonales (2 carriles desfasados para presencia continua)
+        for slot in range(2):
+            period = 42
+            local_f = (idx + slot * 21) % period
+            cycle_id = (idx + slot * 21) // period
+            if local_f < 30:
+                prog_c = local_f / 30.0
+                life = math.sin(prog_c * math.pi)
+                pal = self.comet_palettes[(cycle_id + slot) % len(self.comet_palettes)]
+
+                start_x = self.W * (0.88 if slot == 0 else 0.62) + ((cycle_id * 97) % 140) - 50
+                start_y = 65 + ((cycle_id * 73 + slot * 160) % 340)
+                angle = math.pi * (0.74 if slot == 0 else 0.77)
+                speed_c = 15.5
+                dist_c = local_f * speed_c
+                cx = start_x + math.cos(angle) * dist_c
+                cy = start_y + math.sin(angle) * dist_c
+                tail_len = 125.0
+                tx = cx - math.cos(angle) * tail_len
+                ty = cy - math.sin(angle) * tail_len
+
+                # Dibujar estela segmentada con degradado de opacidad y grosor
+                steps = 16
+                for s_i in range(steps):
+                    u0 = s_i / float(steps)
+                    u1 = (s_i + 1) / float(steps)
+                    p0x = cx + (tx - cx) * u0
+                    p0y = cy + (ty - cy) * u0
+                    p1x = cx + (tx - cx) * u1
+                    p1y = cy + (ty - cy) * u1
+                    seg_alpha = int(round(230 * life * ((1.0 - u0) ** 1.5)))
+                    width_s = max(1, int(round(4.2 * (1.0 - u0 * 0.7))))
+                    if seg_alpha > 4:
+                        od.line([(p0x, p0y), (p1x, p1y)], fill=pal["tail"] + (seg_alpha,), width=width_s)
+
+                # Cabeza brillante de 4 puntas del cometa
+                self._draw_four_point_spark(od, cx, cy, 9.5, pal["head"], min(1.0, life * 1.15))
+
+        canvas.alpha_composite(overlay)
+        return canvas
+
+    def render_logo_intro_frame(self, sc_prog, idx=0):
+        canvas = self.render_cosmic_galaxy_bg(idx)
         if sc_prog > 0.74:
             fade_bg = min(1.0, (sc_prog - 0.74) / 0.26)
             canvas = Image.blend(canvas, self.party_bokeh_bg, fade_bg)
@@ -382,8 +578,111 @@ class CleanDreamCraftersRenderer:
         rgb = np.array(canvas.convert("RGB"))
         return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
+    def render_logo_outro_frame(self, outro_prog, idx=0):
+        """
+        Cierre con el ícono D animado mientras se escucha la voz de Mario diciendo
+        'DreamCrafters, artificialmente hechos a mano.'
+        """
+        canvas = self.render_cosmic_galaxy_bg(idx)
+        if outro_prog < 0.18:
+            fade_in = outro_prog / 0.18
+            canvas = Image.blend(self.party_bokeh_bg, canvas, fade_in)
+
+        halo_alpha = int(145 * min(1.0, outro_prog * 2.2))
+        if halo_alpha > 5:
+            halo = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+            hd = ImageDraw.Draw(halo)
+            r_halo = int(185 + 45 * math.sin(outro_prog * math.pi * 2.0))
+            cx, cy = self.W // 2, self.H // 2 - 55
+            hd.ellipse((cx - r_halo, cy - r_halo, cx + r_halo, cy + r_halo), fill=(56, 189, 248, halo_alpha // 3))
+            hd.ellipse((cx - r_halo // 2, cy - r_halo // 2, cx + r_halo // 2, cy + r_halo // 2), fill=(250, 204, 21, halo_alpha // 4))
+            canvas.alpha_composite(halo)
+
+        if self.d_icon_hd:
+            if outro_prog < 0.26:
+                u = outro_prog / 0.26
+                c1 = 1.70158
+                c3 = c1 + 1.0
+                scale = 0.18 + 0.84 * (1.0 + c3 * ((u - 1.0) ** 3) + c1 * ((u - 1.0) ** 2))
+                cx = int((1.0 - u) * 59 + u * (self.W // 2))
+                cy = int((1.0 - u) * 56 + u * (self.H // 2 - 55))
+            else:
+                scale = 1.02 + 0.03 * math.sin((outro_prog - 0.26) * 8.0)
+                cx, cy = self.W // 2, self.H // 2 - 55
+
+            target_w = max(48, int(330 * scale))
+            target_h = max(50, int(340 * scale))
+            d_img = self.d_icon_hd.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+            if 0.15 <= outro_prog <= 0.78:
+                sweep_u = (outro_prog - 0.15) / 0.63
+                _, _, _, d_alpha = d_img.split()
+                sweep_layer = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+                sw_d = ImageDraw.Draw(sweep_layer)
+                band_x = int(-target_w * 0.4 + sweep_u * (target_w * 1.8))
+                poly = [
+                    (band_x - 36, 0),
+                    (band_x + 36, 0),
+                    (band_x - 24, target_h),
+                    (band_x - 96, target_h),
+                ]
+                sw_d.polygon(poly, fill=(250, 204, 21, 190))
+                masked_sweep = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+                masked_sweep.paste(sweep_layer, (0, 0), d_alpha)
+                d_img = Image.alpha_composite(d_img, masked_sweep)
+
+            canvas.alpha_composite(d_img, (cx - target_w // 2, cy - target_h // 2))
+
+        txt_alpha = min(1.0, max(0.0, (outro_prog - 0.12) / 0.20))
+        if txt_alpha > 0.04:
+            if self.logo_text:
+                lw, lh = self.logo_text.size
+                th = 58
+                tw = int(lw * (th / float(lh)))
+                lt_resized = self.logo_text.resize((tw, th), Image.Resampling.LANCZOS)
+                r, g, b, a = lt_resized.split()
+                a = a.point(lambda p: int(p * txt_alpha))
+                lt_faded = Image.merge("RGBA", (r, g, b, a))
+                canvas.alpha_composite(lt_faded, ((self.W - tw) // 2, self.H // 2 + 148))
+
+            txt_overlay = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+            tod = ImageDraw.Draw(txt_overlay)
+            tod.text(
+                (self.W // 2, self.H // 2 + 236),
+                "INVITACIONES QUE SE JUEGAN",
+                font=self.f_intro_sub,
+                fill=(56, 189, 248, int(245 * txt_alpha)),
+                anchor="mm",
+            )
+            pill_y0, pill_y1 = self.H - 126, self.H - 34
+            tod.rounded_rectangle(
+                (32, pill_y0, self.W - 32, pill_y1),
+                radius=24,
+                fill=(15, 19, 26, int(240 * txt_alpha)),
+                outline=(250, 204, 21, int(215 * txt_alpha)),
+                width=2,
+            )
+            tod.text(
+                (self.W // 2, pill_y0 + 30),
+                "VISITA HOY DREAMCRAFTERS.LAT",
+                font=self.f_pill,
+                fill=(250, 204, 21, int(255 * txt_alpha)),
+                anchor="mm",
+            )
+            tod.text(
+                (self.W // 2, pill_y0 + 64),
+                ">> DREAMCRAFTERS.LAT <<",
+                font=self.f_url,
+                fill=(250, 246, 238, int(255 * txt_alpha)),
+                anchor="mm",
+            )
+            canvas.alpha_composite(txt_overlay)
+
+        rgb = np.array(canvas.convert("RGB"))
+        return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
     def render_phone_content(self, scene_type, sc_prog):
-        pw, ph = 420, 796
+        pw, ph = 376, 736
         if scene_type == "gameplay" and self.gameplay_frames:
             f_idx = min(len(self.gameplay_frames) - 1, int(sc_prog * len(self.gameplay_frames)))
             return Image.open(self.gameplay_frames[f_idx]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
@@ -400,52 +699,95 @@ class CleanDreamCraftersRenderer:
             return Image.open(self.unlocked_frames[-1]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
         return Image.new("RGBA", (pw, ph), (11, 13, 18, 255))
 
-    def render_frame(self, idx, total_frames, fps, pos_val, scene_info):
-        t_sec = idx / float(fps)
+    def _draw_floor_contact_shadow(self, canvas, cx, boot_y, rx, ry, alpha=145):
+        shadow = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shadow)
+        sd.ellipse((cx - rx, boot_y - ry, cx + rx, boot_y + ry), fill=(4, 6, 12, alpha))
+        sd.ellipse(
+            (cx - int(rx * 0.65), boot_y - int(ry * 0.65), cx + int(rx * 0.65), boot_y + int(ry * 0.65)),
+            fill=(2, 4, 8, int(alpha * 0.75)),
+        )
+        canvas.alpha_composite(shadow)
+
+    def render_frame(self, idx, total_frames, fps, scene_info):
         sc = scene_info["scene"]
         sc_prog = scene_info["progress"]
         sc_type = sc["type"]
 
         if sc_type == "logo_intro":
-            return self.render_logo_intro_frame(sc_prog)
+            return self.render_logo_intro_frame(sc_prog, idx=idx)
+
+        # En el final (escena CTA), justo cuando Mario dice el ending ("DreamCrafters, artificialmente hechos a mano"),
+        # se sigue escuchando su voz pero en pantalla aparece el cierre animado con el ícono D.
+        if sc_type == "cta":
+            sc_dur = max(0.1, sc["end"] - sc["start"])
+            t_in_sc = sc_prog * sc_dur
+            ending_logo_start_sec = 4.85
+            if t_in_sc >= ending_logo_start_sec:
+                outro_prog = min(1.0, (t_in_sc - ending_logo_start_sec) / max(0.1, sc_dur - ending_logo_start_sec))
+                return self.render_logo_outro_frame(outro_prog, idx=idx)
 
         accent = sc["accent_rgb"]
-        s_idx = int(round(np.clip(pos_val, 0, len(self.tp.rgba_ladder) - 1)))
-        mario_rgba_cv = self.tp.rgba_ladder[s_idx]
-        b, g, r, a = cv2.split(mario_rgba_cv)
-        mario_pil = Image.fromarray(cv2.merge([r, g, b, a]))
-        breath_y = int(math.sin(t_sec * 2.5) * 4)
+        pose_id = self.rig.select_symmetric_pose(sc_type, sc_prog)
+        if pose_id != self.last_pose_id:
+            self.last_pose_id = pose_id
+            self.pose_change_frame = idx
 
+        va_idx = min(idx, len(self.va["visemes"]) - 1)
+        viseme_id = int(self.va["visemes"][va_idx])
+        rms_val = float(self.va["rms_norm"][va_idx])
+        is_speaking = bool(self.va["is_speaking"][va_idx])
+
+        # Cabeza con sutil asentimiento vertical al hablar (0px desplazamiento horizontal -> eje central 100% fijo)
+        nod_px = int(round(rms_val * 2.0)) if is_speaking else 0
+        mario_pil = self.rig.get_puppet_pil(pose=pose_id, viseme_idx=viseme_id, nod_px=nod_px)
+
+        # Squash & Stretch sutil anclado en la suela de las botas
+        frames_since_pop = idx - self.pose_change_frame
+        pop_scale_y = 1.0
+        pop_scale_x = 1.0
+        if 0 <= frames_since_pop < 3 and idx > 35:
+            pop_env = math.sin((frames_since_pop + 1) / 3.0 * math.pi)
+            pop_scale_y = 1.0 + 0.016 * pop_env
+            pop_scale_x = 1.0 - 0.008 * pop_env
+
+        # ESCENAS HOOK / CTA -> Mario de Cuerpo Completo centrado en pantalla
         if sc_type in ("hook", "cta"):
             canvas = self.party_bokeh_bg.copy()
-            mario_crop = mario_pil.crop((40, 40, 680, 1180))
-            mw, mh = 560, 995
-            mario_big = mario_crop.resize((mw, mh), Image.Resampling.LANCZOS)
 
-            enter_offset_y = 0
-            if sc_type == "hook" and sc_prog < 0.08:
-                u = sc_prog / 0.08
-                enter_offset_y = int((1.0 - u) * 45)
+            base_h = 860
+            base_w = int(round(base_h * (760.0 / 920.0)))
+            mw = int(round(base_w * pop_scale_x))
+            mh = int(round(base_h * pop_scale_y))
+            mario_full = mario_pil.resize((mw, mh), Image.Resampling.LANCZOS)
 
-            canvas.alpha_composite(mario_big, ((self.W - mw) // 2, 175 + breath_y + enter_offset_y))
+            floor_y = 1138
+            mario_x = (self.W - mw) // 2
+            mario_y = floor_y - mh
+            boot_sole_y = mario_y + int(round(mh * (876.0 / 920.0)))
+            self._draw_floor_contact_shadow(canvas, self.W // 2, boot_sole_y, rx=145, ry=20, alpha=145)
 
-            grad = Image.new("RGBA", (self.W, 380), (0, 0, 0, 0))
+            canvas.alpha_composite(mario_full, (mario_x, mario_y))
+
+            grad = Image.new("RGBA", (self.W, 240), (0, 0, 0, 0))
             gd = ImageDraw.Draw(grad)
-            for gy in range(380):
-                alpha_g = int(235 * ((gy / 380.0) ** 1.4))
+            for gy in range(240):
+                alpha_g = int(210 * ((gy / 240.0) ** 1.5))
                 gd.line([(0, gy), (self.W, gy)], fill=(8, 10, 16, alpha_g))
-            canvas.alpha_composite(grad, (0, self.H - 380))
+            canvas.alpha_composite(grad, (0, self.H - 240))
+
+        # ESCENAS GAMEPLAY / UNLOCKED / WEBSITE -> Fondo cósmico con estrellas y cometas + Celular + Mario
         else:
-            canvas = self.clean_dark_bg.copy()
+            canvas = self.render_cosmic_galaxy_bg(idx)
             cd = ImageDraw.Draw(canvas)
 
-            phone_w, phone_h = 420, 796
-            phone_x = (self.W - phone_w) // 2 - 34
-            phone_y = 180
+            phone_w, phone_h = 376, 736
+            phone_x = 22
+            phone_y = 172
 
             cd.rounded_rectangle(
                 (phone_x - 10, phone_y - 10, phone_x + phone_w + 10, phone_y + phone_h + 10),
-                radius=46,
+                radius=44,
                 fill=(18, 22, 30, 255),
                 outline=(250, 246, 238, 165),
                 width=3,
@@ -453,21 +795,31 @@ class CleanDreamCraftersRenderer:
 
             phone_scr = self.render_phone_content(sc_type, sc_prog)
             mask = Image.new("L", (phone_w, phone_h), 0)
-            ImageDraw.Draw(mask).rounded_rectangle((0, 0, phone_w, phone_h), radius=38, fill=255)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, phone_w, phone_h), radius=36, fill=255)
             canvas.paste(phone_scr, (phone_x, phone_y), mask)
 
             cd = ImageDraw.Draw(canvas)
-            sp_w = 76
+            sp_w = 74
             sp_x = phone_x + (phone_w - sp_w) // 2
             cd.rounded_rectangle((sp_x, phone_y - 7, sp_x + sp_w, phone_y - 3), radius=2, fill=(60, 68, 82, 220))
-            hi_w = 130
+            hi_w = 124
             hi_x = phone_x + (phone_w - hi_w) // 2
             cd.rounded_rectangle((hi_x, phone_y + phone_h - 14, hi_x + hi_w, phone_y + phone_h - 9), radius=3, fill=(255, 255, 255, 190))
 
-            mario_crop = mario_pil.crop((80, 70, 640, 930))
-            mw, mh = 310, 475
-            mario_corner = mario_crop.resize((mw, mh), Image.Resampling.LANCZOS)
-            canvas.alpha_composite(mario_corner, (self.W - mw + 18, self.H - mh - 98 + breath_y))
+            base_h = 610
+            base_w = int(round(base_h * (760.0 / 920.0)))
+            mw = int(round(base_w * pop_scale_x))
+            mh = int(round(base_h * pop_scale_y))
+            mario_side = mario_pil.resize((mw, mh), Image.Resampling.LANCZOS)
+
+            cx_side = 552
+            floor_y = 1138
+            mario_x = cx_side - mw // 2
+            mario_y = floor_y - mh
+            boot_sole_y = mario_y + int(round(mh * (876.0 / 920.0)))
+            self._draw_floor_contact_shadow(canvas, cx_side, boot_sole_y, rx=102, ry=15, alpha=145)
+
+            canvas.alpha_composite(mario_side, (mario_x, mario_y))
 
         cd = ImageDraw.Draw(canvas)
 
@@ -478,8 +830,6 @@ class CleanDreamCraftersRenderer:
             th = 34
             tw = int(lw * (th / float(lh)))
             canvas.alpha_composite(self.logo_text.resize((tw, th), Image.Resampling.LANCZOS), (98, 40))
-
-        cd.text((self.W // 2, 134), sc["top_caption"], font=self.f_top_title, fill=(250, 246, 238), anchor="mm")
 
         pill_y0, pill_y1 = self.H - 126, self.H - 34
         cd.rounded_rectangle(
@@ -506,38 +856,25 @@ def main():
         from capture_real_mario_mobile import capture_all
         capture_all()
 
-    with open(os.path.join(CHAR_02_DIR, "character.json"), "r", encoding="utf-8") as f:
-        cfg = json.load(f)
-
-    source_vid = os.path.join(CHAR_02_DIR, cfg["assets"]["source_video"])
+    ffmpeg_path = resolve_ffmpeg_path()
     bgm_rel = os.path.join(WEB_ASSETS_DIR, "invitacionmario", "mario_galaxy_theme.mp3")
-    ladder = cfg["rig"]["frame_ladder"]
-
-    packager = ToonPackager(
-        source_video_path=source_vid,
-        frame_ladder=ladder,
-        bgm_path=bgm_rel if os.path.exists(bgm_rel) else None,
-        phonetic_mode=True,
-        blend_mode="snap",
-    )
 
     out_dir = os.path.dirname(os.path.abspath(args.output))
     os.makedirs(out_dir, exist_ok=True)
     clean_wav = os.path.join(out_dir, "mario_cloned_voice.wav")
 
-    print("Sintetizando narracion con ChatterboxMultilingualTTS local...")
-    scenes = synthesize_cloned_scenes_local(SCENES_CLEAN, REF_WAV, clean_wav, ffmpeg_path=packager.ffmpeg_path)
+    print("Sintetizando narracion con ChatterboxMultilingualTTS local (entonacion original)...")
+    scenes = synthesize_cloned_scenes_local(SCENES_CLEAN, REF_WAV, clean_wav, ffmpeg_path=ffmpeg_path)
 
     fps = 24
-    positions, _, _ = packager.compute_smooth_ladder_trajectory(clean_wav, fps=fps)
-    intro_frames = int(INTRO_DURATION_SEC * fps)
-    for k in range(min(intro_frames, len(positions))):
-        positions[k] = 0.0
+    print("Cargando libreria MarioModularRig (2K Symmetric Full-Body Rig)...")
+    modular_rig = MarioModularRig(MODULAR_RIG_DIR)
+    voice_analysis = modular_rig.analyze_voice_visemes(clean_wav, fps=fps, intro_duration_sec=INTRO_DURATION_SEC)
 
-    total_frames = len(positions)
-    print(f"Renderizando {total_frames} frames ({total_frames/fps:.1f}s)...")
+    total_frames = voice_analysis["total_frames"]
+    print(f"Renderizando {total_frames} frames ({total_frames/fps:.1f}s) con las 5 poses frontales simetricas...")
 
-    renderer = CleanDreamCraftersRenderer(packager)
+    renderer = CleanDreamCraftersRenderer(modular_rig, voice_analysis)
     temp_video = os.path.join(out_dir, "temp_visual_dc.mp4")
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     vw = cv2.VideoWriter(temp_video, fourcc, fps, (720, 1280))
@@ -552,17 +889,17 @@ def main():
         dur = max(0.1, active_sc["end"] - active_sc["start"])
         prog = np.clip((t_sec - active_sc["start"]) / dur, 0.0, 1.0)
 
-        bgr = renderer.render_frame(i, total_frames, fps, positions[i], {"scene": active_sc, "progress": prog})
+        bgr = renderer.render_frame(i, total_frames, fps, {"scene": active_sc, "progress": prog})
         vw.write(bgr)
 
     vw.release()
 
     mixed_wav = os.path.join(out_dir, "mario_cloned_mixed.wav")
-    final_audio = packager.mix_voice_with_bgm(clean_wav, mixed_wav, bgm_vol=0.12)
+    final_audio = mix_voice_with_bgm(clean_wav, bgm_rel, mixed_wav, bgm_vol=0.12, ffmpeg_path=ffmpeg_path)
 
     subprocess.run(
         [
-            packager.ffmpeg_path,
+            ffmpeg_path,
             "-y",
             "-i",
             temp_video,

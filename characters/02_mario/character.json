@@ -4,34 +4,29 @@
   "tagline": "INVITACIONES VIDEOJUEGO INTERACTIVAS",
   "closing_signature": "DREAMCRAFTERS.LAT",
   "assets": {
+    "modular_rig_dir": "modular_rig_v2",
     "source_video": "mario_green_screen.mp4",
-    "background_image": "",
-    "bgm_audio": "C:/Users/rufin/.gemini/antigravity/playground/dreamcrafters/public/invitacionmario/mario_galaxy_theme.mp3",
+    "background_image": "party_bg.jpeg",
+    "bgm_audio": "../../web_assets/invitacionmario/mario_galaxy_theme.mp3",
     "lcd_font": "assets/VT323-Regular.ttf",
     "hud_font": "assets/ShareTechMono-Regular.ttf"
   },
   "rig": {
-    "frame_ladder": [16, 14, 162, 160, 24, 34, 90, 96, 180, 48, 144, 192, 216, 132, 66, 210],
+    "rig_type": "modular_2k_symmetric",
+    "canvas_size": [760, 920],
+    "centerline_x": 380,
+    "symmetric_body_poses": [0, 4, 6, 7, 8],
+    "viseme_count": 9,
     "phonetic_mode": true,
-    "blend_mode": "snap",
-    "focus_center": [360, 281],
-    "slew_up": 0.45,
-    "slew_down": 0.30,
-    "shots": {
-      "FULL": { "zoom": 1.0, "focus_y": 640 },
-      "MEDIUM": { "zoom": 1.35, "focus_y": 380 },
-      "CLOSE": { "zoom": 1.75, "focus_y": 245 }
-    }
+    "blend_mode": "snap"
   },
   "voice": {
-    "engine": "elevenlabs",
-    "voice_id": "TX3LPaxmHKxFdv7VOQHJ",
-    "model_id": "eleven_v4_turbo",
-    "voice_name": "es-MX-JorgeNeural",
-    "rate": "+4%",
-    "pitch": "-4Hz",
-    "dsp_preset": "studio_broadcast",
-    "bgm_volume": 0.14
+    "engine": "chatterbox_local",
+    "ref_wav": "mario_ref_8s.wav",
+    "exaggeration": 0.55,
+    "cfg_weight": 0.50,
+    "temperature": 0.72,
+    "bgm_volume": 0.12
   },
   "visual_fx": {
     "theme_name": "dreamcrafters",
