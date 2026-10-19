@@ -1,0 +1,15 @@
+opencv-python-headless
+numpy
+pillow
+playwright
+librosa
+s3tokenizer
+resemble-perth
+conformer==0.3.2
+safetensors
+pyloudnorm
+omegaconf
+pykakasi==2.3.0
+diffusers==0.29.0
+transformers
+huggingface-hub
