@@ -53,21 +53,42 @@ function resolveVideoPath() {
 
 const VIDEO_PATH = resolveVideoPath();
 const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(path.basename(VIDEO_PATH));
+const IS_REFERIDOS_VIDEO = /referidos|socios/i.test(path.basename(VIDEO_PATH));
 
 // Ligas oficiales que SIEMPRE van en los campos de texto de las redes sociales
 const LINKS = {
   mainSite: 'https://dreamcrafters.lat',
+  sociosSite: 'https://dreamcrafters.lat/socios',
   minecraftDemo: 'https://dreamcrafters.lat/invitacionminecraft/ian-level8',
   marioDemo: 'https://dreamcrafters.lat/invitacionmario/index.html',
   agentesDemo: 'https://dreamcrafters.lat/agentes_de_luz',
   tctSite: 'https://talentocontarifa.lat'
 };
 
-const DREAMCRAFTERS_TITLE = IS_MINECRAFT_VIDEO
+const DREAMCRAFTERS_TITLE = IS_REFERIDOS_VIDEO
+  ? '💰🍄 ¿Y si en vez de pagar publicidad, te pagamos a ti? ¡Gana el 20% por recomendar DreamCrafters! 🎮'
+  : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Crea GRATIS tu invitación interactiva de Minecraft! | DreamCrafters'
   : '🍄✨ ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮 | DreamCrafters';
 
-const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
+const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
+  ? [
+      '💰🍄 ¿Y si en vez de pagarle publicidad a las redes sociales, te pagamos ese dinero directamente a ti?',
+      '',
+      'En DreamCrafters creamos invitaciones que son videojuegos reales en el celular. Cuando una mamá la manda al grupo de WhatsApp del salón, ¡todas las demás quieren una igual para su fiesta! 🎮🌟',
+      '',
+      '🔥 PROGRAMA DE SOCIOS DREAMCRAFTERS (20% DIRECTO):',
+      '1️⃣ Entra y genera tu enlace único en 30 segundos.',
+      '2️⃣ Registra tu CLABE o tarjeta donde quieres recibir tus depósitos.',
+      '3️⃣ Por cada invitación comprada desde tu link, ¡te transferimos el 20% directo vía SPEI, sin preguntas!',
+      '',
+      `👉 Genera tu link del 20% gratis aquí: ${LINKS.sociosSite}`,
+      `🌐 Catálogo de mundos interactivos: ${LINKS.mainSite}`,
+      `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
+      '',
+      '#DreamCrafters #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras #SalonesDeFiestas #SuperMarioGalaxy'
+    ].join('\n')
+  : IS_MINECRAFT_VIDEO
   ? [
       '👑⚔️ ¡El Rey Steve tiene un regalo para tu próxima fiesta! Crea 100% GRATIS tu invitación interactiva de Minecraft.',
       '',
@@ -78,6 +99,7 @@ const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
       '',
       `👉 Créala gratis en 60 segundos: ${LINKS.mainSite}`,
       `🗡️ Prueba el demo en vivo: ${LINKS.minecraftDemo}`,
+      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
       '',
       '#DreamCrafters #MinecraftParty #InvitacionesDigitales #FiestasInfantiles #InvitacionesMinecraft #CumpleañosMinecraft'
     ].join('\n')
@@ -91,15 +113,31 @@ const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
       '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
       `👉 Pídela y personalízala en 1 minuto: ${LINKS.mainSite}`,
       `🕹️ Juega el demo y mira el video saludo en vivo: ${LINKS.marioDemo}`,
+      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
       '',
       '#DreamCrafters #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #InvitacionesMario #CumpleañosMarioBros #VideoSaludoMario'
     ].join('\n');
 
-const TCT_CROSSPROMO_TITLE = IS_MINECRAFT_VIDEO
+const TCT_CROSSPROMO_TITLE = IS_REFERIDOS_VIDEO
+  ? '💰🚀 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti? | Programa de Socios DreamCrafters'
+  : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Regalamos invitaciones interactivas de Minecraft que se juegan en el celular! | DreamCrafters'
   : '🚀 ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮🌟 | DreamCrafters';
 
-const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
+const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
+  ? [
+      '💰🍄 ¿Y si en vez de pagarle publicidad a las redes, te pagamos el 20% directamente a ti?',
+      '',
+      'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🎮🌟',
+      '',
+      `👉 Activa tu link y registra tu CLABE en 30 segundos: ${LINKS.sociosSite}`,
+      `🌐 Ver catálogo de invitaciones jugables: ${LINKS.mainSite}`,
+      `🕹️ Demo Super Mario Galaxy: ${LINKS.marioDemo}`,
+      `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
+      '',
+      '#DreamCrafters #TalentoConTarifa #FiestasInfantiles #InvitacionesDigitales #Afiliados #IngresosExtra #SuperMarioGalaxy #Reels #Shorts'
+    ].join('\n')
+  : IS_MINECRAFT_VIDEO
   ? [
       '👑⚔️ ¿Tienes fiesta en puerta? En DreamCrafters liberamos GRATIS el creador de invitaciones interactivas de Minecraft.',
       '',
@@ -107,6 +145,7 @@ const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
       '',
       `👉 Crea la tuya gratis aquí: ${LINKS.mainSite}`,
       `🗡️ Juega el demo: ${LINKS.minecraftDemo}`,
+      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
       `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
       '',
       '#DreamCrafters #Minecraft #InvitacionesDigitales #FiestasInfantiles #TalentoConTarifa #Reels #Shorts'
@@ -120,6 +159,7 @@ const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
       '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
       `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
       `🕹️ Juega el demo con video saludo: ${LINKS.marioDemo}`,
+      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
       '',
       '─────────────────────────',
       '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
