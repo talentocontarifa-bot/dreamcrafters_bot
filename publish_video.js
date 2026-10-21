@@ -22,7 +22,36 @@ const { publishReelToInstagram } = require('./instagram_publisher');
 const { publishVideoToTikTok } = require('./tiktok_publisher');
 const { publishVideoToYouTube } = require('./youtube_publisher');
 
-const VIDEO_PATH = process.env.VIDEO_PATH || path.join(__dirname, 'out', 'video_final_dreamcrafters.mp4');
+const VIDEOS_DIR = path.join(__dirname, 'videos');
+
+function resolveVideoPath() {
+  if (process.env.VIDEO_PATH && process.env.VIDEO_PATH !== 'auto') {
+    const customPath = path.isAbsolute(process.env.VIDEO_PATH)
+      ? process.env.VIDEO_PATH
+      : path.join(VIDEOS_DIR, path.basename(process.env.VIDEO_PATH));
+    if (fs.existsSync(customPath)) return customPath;
+    const relPath = path.resolve(__dirname, process.env.VIDEO_PATH);
+    if (fs.existsSync(relPath)) return relPath;
+  }
+
+  if (fs.existsSync(VIDEOS_DIR)) {
+    const mp4Files = fs
+      .readdirSync(VIDEOS_DIR)
+      .filter(f => f.toLowerCase().endsWith('.mp4'))
+      .sort();
+    if (mp4Files.length > 0) {
+      // Rotación determinística por bloque de 12 horas (turno mañana / tarde) cuando hay varios videos
+      const slotIndex = Math.floor(Date.now() / (12 * 3600 * 1000)) % mp4Files.length;
+      const chosen = mp4Files[slotIndex];
+      console.log(`🎬 Videos disponibles en videos/: [${mp4Files.join(', ')}] -> Seleccionado: ${chosen}`);
+      return path.join(VIDEOS_DIR, chosen);
+    }
+  }
+
+  return path.join(__dirname, 'out', 'video_final_dreamcrafters.mp4');
+}
+
+const VIDEO_PATH = resolveVideoPath();
 
 // Ligas oficiales que SIEMPRE van en los campos de texto de las redes sociales
 const LINKS = {

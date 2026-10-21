@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-render_dreamcrafters_video.py — Motor Oficial de Video Promocional DreamCrafters (Toon Maker v2 Modular)
-========================================================================================================
-- Rig Modular 2K Simétrico de Cuerpo Completo (`MarioModularRig` en `characters/02_mario/modular_rig_v2`):
-  * 9 Cabezas 2K con Lip-Sync y Parpadeo Hablando (`00:MBP` a `08:BLINK_TALK`).
-  * 5 Poses de Cuerpo Completo 100% Frontales y Simétricas (`00: neutral`, `04: thumbs`, `06: hips`,
-    `07: palms`, `08: fists`) con eje vertical central bloqueado (`x = 380`).
-- Clonación de Voz 100% Local (`ChatterboxMultilingualTTS` con la entonación original `exaggeration=0.55`),
-  sin llamadas externas a Gradio Spaces.
-- Intro rápido (1.3s) con el ícono "D" (`d-icon.svg`) animado + transición al header.
-- Invitación real `/invitacionmario/index.html` y `dreamcrafters.lat` renderizadas en
-  modo móvil real vía Playwright Chromium.
+render_dreamcrafters_video.py — Motor Oficial de Video Promocional DreamCrafters (FeatherTalk ONNX + HF Chatterbox)
+===================================================================================================================
+- Avatar 3D de Mario con Lip-Sync Neuronal Continuo (`FeatherTalk 144x144` + `FeatherHuBERT` en ONNX):
+  * Reemplaza el rig estático por el video 3D de Mario entrenado en FeatherTalk (`characters/02_mario/feathertalk_onnx`).
+  * Ciclo ping-pong estabilizado (`frames 24..248`), fusión elíptica sin costuras y boca cerrada natural en pausas.
+  * Chroma key con despill suave sobre el fondo bokeh de fiesta (`party_bg.jpeg`) y sombra de contacto.
+- Clonación de Voz de Alta Fidelidad desde Hugging Face (`ResembleAI/Chatterbox-Multilingual-TTS` / `ResembleAI/chatterbox`)
+  usando la referencia limpia de frase completa (`mario_ref_8s.wav`), con caché persistente por SHA-256 en
+  `characters/02_mario/out/cloned_voice_cache`.
+- Invitación real `/invitacionmario/index.html` y `dreamcrafters.lat` mostradas a PANTALLA COMPLETA (720x1280)
+  durante las escenas `gameplay`, `unlocked` y `website`.
 """
 
 import os
 import sys
 import glob
 import math
-import json
 import wave
 import shutil
 import hashlib
@@ -28,19 +27,19 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-TOON_HOST_DIR = os.path.join(REPO_ROOT, "toon_host")
-if TOON_HOST_DIR not in sys.path:
-    sys.path.insert(0, TOON_HOST_DIR)
-
-from mario_modular_rig import MarioModularRig
-
 CHAR_02_DIR = os.path.join(REPO_ROOT, "characters", "02_mario")
-MODULAR_RIG_DIR = os.path.join(CHAR_02_DIR, "modular_rig_v2")
+FEATHERTALK_ONNX_DIR = os.path.join(CHAR_02_DIR, "feathertalk_onnx")
 WEB_ASSETS_DIR = os.path.join(REPO_ROOT, "web_assets")
 LANDING_DIR = os.path.join(WEB_ASSETS_DIR, "landing")
 REF_WAV = os.path.join(CHAR_02_DIR, "mario_ref_8s.wav")
 REAL_CAP_DIR = os.path.join(CHAR_02_DIR, "out", "real_mobile_capture")
 INTRO_DURATION_SEC = 1.30
+
+FACE_CROP_SIZE = 152
+FACE_INNER_SIZE = 144
+FACE_BORDER = 4
+GEOMETRY_BASE_SIZE = 160
+MASK_RECT = (5, 5, 150, 145)
 
 
 SCENES_CLEAN = [
@@ -49,35 +48,35 @@ SCENES_CLEAN = [
         "accent_rgb": (56, 189, 248),
         "top_caption": "¿OTRA IMAGEN FIJA EN WHATSAPP?",
         "bottom_pill": "INVITACIONES QUE SE JUEGAN EN TU CEL",
-        "voice_text": "¡Hola amigos! Soy yo, Mario. ¿Todavía mandas invitaciones aburridas de imagen fija por WhatsApp? En Drim Crafters convertimos tu invitación en un videojuego real.",
+        "voice_text": "¡Hola amigos! Soy yo, Mario. ¿Todavía mandas invitaciones aburridas de imagen fija por Guatsap? ¡En Drim Crafters convertimos tu invitación en un videojuego real!",
     },
     {
         "type": "gameplay",
         "accent_rgb": (250, 204, 21),
         "top_caption": "TUS INVITADOS JUEGAN PARA ENTRAR",
         "bottom_pill": "ATRAPA 50 PUNTOS SIN INSTALAR APPS",
-        "voice_text": "Mira qué divertido: tus invitados abren el enlace en su celular y tienen que atrapar las monedas espaciales para desbloquear todos los detalles de tu fiesta.",
+        "voice_text": "¡Mira qué divertido! Tus invitados abren el enlace en su celular y tienen que atrapar las monedas espaciales para desbloquear todos los detalles de tu fiesta.",
     },
     {
         "type": "unlocked",
         "accent_rgb": (56, 189, 248),
         "top_caption": "CUENTA REGRESIVA + MAPA GPS",
         "bottom_pill": "CONFIRMACIÓN EN 1 TOQUE A WHATSAPP",
-        "voice_text": "Al lograr la misión se abre la invitación con música épica, cuenta regresiva, mapa exacto en Google Maps y botón para confirmar asistencia directo a tu WhatsApp.",
+        "voice_text": "Al lograr la misión, se abre la invitación con música épica, cuenta regresiva, mapa exacto en Gúgol Maps y botón para confirmar asistencia directo a tu Guatsap.",
     },
     {
         "type": "website",
         "accent_rgb": (74, 222, 128),
         "top_caption": "CREA LA DE MINECRAFT GRATIS",
         "bottom_pill": "PERSONALIZA EN 60 SEG EN DREAMCRAFTERS.LAT",
-        "voice_text": "Además, si entras ahora a drim crafters punto lat, puedes escribir el nombre y la edad de tu festejado y crear gratis la invitación interactiva de Minecraft en un minuto.",
+        "voice_text": "Además, si entras ahora a drim crafters punto lat, puedes escribir el nombre y la edad de tu festejado y crear gratis la invitación interactiva de Maincraft en un minuto.",
     },
     {
         "type": "cta",
         "accent_rgb": (250, 204, 21),
         "top_caption": "¡SORPRENDE A TODO EL SALÓN!",
         "bottom_pill": "VISITA HOY DREAMCRAFTERS.LAT",
-        "voice_text": "¡Muchas felicidades! Te esperamos hoy en drim crafters punto lat. Drim Crafters, artificialmente hechos a mano.",
+        "voice_text": "¡Muchas felicidades! Te esperamos hoy en drim crafters punto lat. ¡Drim Crafters, artificialmente hechos a mano!",
     },
 ]
 
@@ -147,17 +146,34 @@ def generate_intro_chime_pcm(duration_sec=1.30, sr=24000):
     return (sig * 32767.0).astype(np.int16)
 
 
+def _trim_silence_pcm(pcm, sr=24000):
+    fl = pcm.astype(np.float32) / 32768.0
+    win = int(0.02 * sr)
+    active = [i for i in range(0, len(fl) - win, win) if np.sqrt(np.mean(fl[i : i + win] ** 2)) > 0.008]
+    if not active:
+        return pcm
+    s_idx = max(0, active[0] - int(0.04 * sr))
+    e_idx = min(len(pcm), active[-1] + win + int(0.06 * sr))
+    out = pcm[s_idx:e_idx].copy()
+    fade = int(0.015 * sr)
+    if len(out) > fade * 2:
+        out[:fade] = (out[:fade].astype(np.float32) * np.linspace(0, 1, fade)).astype(np.int16)
+        out[-fade:] = (out[-fade:].astype(np.float32) * np.linspace(1, 0, fade)).astype(np.int16)
+    return out
+
+
 def synthesize_cloned_scenes_local(scenes, ref_wav_path, output_wav_path, ffmpeg_path="ffmpeg"):
     """
-    Clona la voz de `ref_wav_path` 100% localmente usando PyTorch + `ChatterboxMultilingualTTS`
-    con la entonación original validada (`exaggeration=0.55`), manteniendo caché por SHA-256.
+    Usa las pistas clonadas de alta fidelidad de Mario (`ResembleAI/Chatterbox-Multilingual-TTS` en Hugging Face)
+    guardadas en `characters/02_mario/out/cloned_voice_cache`. Si alguna línea cambia, la clona
+    automáticamente desde Hugging Face (`ResembleAI/Chatterbox-Multilingual-TTS`) o el modelo local.
     """
     cache_dir = os.path.join(CHAR_02_DIR, "out", "cloned_voice_cache")
     os.makedirs(cache_dir, exist_ok=True)
 
     sr = 24000
     intro_pcm = generate_intro_chime_pcm(INTRO_DURATION_SEC, sr=sr)
-    pause_samples = np.zeros(int(0.26 * sr), dtype=np.int16)
+    pause_samples = np.zeros(int(0.24 * sr), dtype=np.int16)
     tail_samples = np.zeros(int(0.45 * sr), dtype=np.int16)
 
     all_pcm = [intro_pcm]
@@ -175,56 +191,119 @@ def synthesize_cloned_scenes_local(scenes, ref_wav_path, output_wav_path, ffmpeg
         }
     ]
 
-    local_model = None
+    hf_token = (
+        os.environ.get("HF_TOKEN")
+        or os.environ.get("HF_API_KEY")
+        or os.environ.get("HUGGINGFACE_TOKEN")
+        or None
+    )
 
     for idx, sc in enumerate(scenes):
         v_text = sc["voice_text"].strip()
-        h_key = hashlib.sha256(f"chatterbox_mario_v1|{v_text}".encode("utf-8")).hexdigest()[:16]
-        cached_wav = os.path.join(cache_dir, f"mario_sc_{idx+1}_{h_key}.wav")
+        h_key = hashlib.sha256(f"chatterbox_hf_mario_v2|{v_text}".encode("utf-8")).hexdigest()[:16]
+        cached_wav = os.path.join(cache_dir, f"mario_cb_sc_{idx+1}_{h_key}.wav")
 
         if not os.path.exists(cached_wav):
-            print(f"[Chatterbox Local] Clonando voz de Mario en CPU/GPU local para Escena {idx+1}...")
-            import torch
-            import torchaudio as ta
-            from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+            print(f"[HuggingFace Chatterbox-Multilingual-TTS] Clonando voz de Mario para Escena {idx+1}...")
+            raw_tmp = os.path.join(cache_dir, f"_raw_cb_sc_{idx+1}.wav")
+            cloned_ok = False
+            try:
+                from gradio_client import Client, handle_file
 
-            if local_model is None:
+                c = Client("ResembleAI/Chatterbox-Multilingual-TTS", token=hf_token)
+                wav_out = c.predict(
+                    text_input=v_text,
+                    language_id="es",
+                    audio_prompt_path_input=handle_file(ref_wav_path),
+                    exaggeration_input=0.55,
+                    temperature_input=0.7,
+                    seed_num_input=42,
+                    cfgw_input=0.5,
+                    api_name="/generate_tts_audio",
+                )
+                if wav_out and os.path.exists(wav_out):
+                    subprocess.run(
+                        [
+                            ffmpeg_path,
+                            "-y",
+                            "-i",
+                            wav_out,
+                            "-af",
+                            "highpass=f=80,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=100:makeup=2dB,loudnorm=I=-14.0:TP=-1.0:LRA=6",
+                            "-ac",
+                            "1",
+                            "-ar",
+                            str(sr),
+                            "-c:a",
+                            "pcm_s16le",
+                            raw_tmp,
+                        ],
+                        check=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    cloned_ok = True
+            except Exception as e:
+                print(f"  [Aviso HF Space Chatterbox]: {e}")
+
+            if not cloned_ok:
+                import torch
+                import torchaudio
+                import perth
+
+                class _DummyWatermarker:
+                    def apply_watermark(self, wav, sample_rate=None):
+                        return wav
+
+                perth.PerthImplicitWatermarker = _DummyWatermarker
+                from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+
                 device = "cuda" if torch.cuda.is_available() else "cpu"
-                local_model = ChatterboxMultilingualTTS.from_pretrained(device=device)
-                local_model.prepare_conditionals(ref_wav_path, exaggeration=0.55)
+                model = ChatterboxMultilingualTTS.from_pretrained(device=device)
+                torch.manual_seed(42)
+                if torch.cuda.is_available():
+                    torch.cuda.manual_seed(42)
+                wav_tensor = model.generate(
+                    v_text,
+                    language_id="es",
+                    audio_prompt_path=ref_wav_path,
+                    exaggeration=0.55,
+                    temperature=0.7,
+                    cfg_weight=0.5,
+                )
+                raw_src = os.path.join(cache_dir, f"_src_cb_sc_{idx+1}.wav")
+                torchaudio.save(raw_src, wav_tensor.cpu(), model.sr)
+                subprocess.run(
+                    [
+                        ffmpeg_path,
+                        "-y",
+                        "-i",
+                        raw_src,
+                        "-af",
+                        "highpass=f=80,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=100:makeup=2dB,loudnorm=I=-14.0:TP=-1.0:LRA=6",
+                        "-ac",
+                        "1",
+                        "-ar",
+                        str(sr),
+                        "-c:a",
+                        "pcm_s16le",
+                        raw_tmp,
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                if os.path.exists(raw_src):
+                    os.remove(raw_src)
 
-            torch.manual_seed(42)
-            wav_tensor = local_model.generate(
-                text=v_text,
-                language_id="es",
-                audio_prompt_path=None,
-                exaggeration=0.55,
-                cfg_weight=0.50,
-                temperature=0.72,
-            )
-            raw_tmp = os.path.join(cache_dir, f"_raw_sc_{idx+1}.wav")
-            ta.save(raw_tmp, wav_tensor, local_model.sr)
-
-            subprocess.run(
-                [
-                    ffmpeg_path,
-                    "-y",
-                    "-i",
-                    raw_tmp,
-                    "-af",
-                    "highpass=f=85,lowpass=f=11000,acompressor=threshold=-18dB:ratio=3:attack=5:release=80:makeup=3dB,alimiter=limit=0.95",
-                    "-ac",
-                    "1",
-                    "-ar",
-                    str(sr),
-                    "-c:a",
-                    "pcm_s16le",
-                    cached_wav,
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            with wave.open(raw_tmp, "rb") as wf_r:
+                raw_pcm = np.frombuffer(wf_r.readframes(wf_r.getnframes()), dtype=np.int16).copy()
+            trimmed_pcm = _trim_silence_pcm(raw_pcm, sr=sr)
+            with wave.open(cached_wav, "wb") as wf_w:
+                wf_w.setnchannels(1)
+                wf_w.setsampwidth(2)
+                wf_w.setframerate(sr)
+                wf_w.writeframes(trimmed_pcm.tobytes())
             if os.path.exists(raw_tmp):
                 os.remove(raw_tmp)
 
@@ -239,8 +318,8 @@ def synthesize_cloned_scenes_local(scenes, ref_wav_path, output_wav_path, ffmpeg
         all_pcm.append(pcm)
         if idx < len(scenes) - 1:
             all_pcm.append(pause_samples)
-            sc_copy["end"] = round(cur_time + dur + 0.26, 3)
-            cur_time += dur + 0.26
+            sc_copy["end"] = round(cur_time + dur + 0.24, 3)
+            cur_time += dur + 0.24
         else:
             all_pcm.append(tail_samples)
             sc_copy["end"] = round(cur_time + dur + 0.45, 3)
@@ -297,10 +376,225 @@ def get_font(size, bold=True, mono=False):
     return ImageFont.load_default()
 
 
+def _crop_face(image: np.ndarray, bbox: tuple[int, int, int, int], crop_size: int = FACE_CROP_SIZE) -> np.ndarray:
+    xmin, ymin, xmax, ymax = bbox
+    return cv2.resize(image[ymin:ymax, xmin:xmax], (crop_size, crop_size), interpolation=cv2.INTER_AREA)
+
+
+def _extract_inner(face_crop: np.ndarray, inner_size: int = FACE_INNER_SIZE) -> np.ndarray:
+    return face_crop[
+        FACE_BORDER : FACE_BORDER + inner_size,
+        FACE_BORDER : FACE_BORDER + inner_size,
+    ].copy()
+
+
+def _mask_mouth(image: np.ndarray, inner_size: int = FACE_INNER_SIZE) -> np.ndarray:
+    scale = inner_size / float(GEOMETRY_BASE_SIZE)
+    x, y, width, height = MASK_RECT
+    rect = (
+        round(x * scale),
+        round(y * scale),
+        round(width * scale),
+        round(height * scale),
+    )
+    return cv2.rectangle(image, rect, (0, 0, 0), -1)
+
+
+def _key_mario_green_screen(bgr: np.ndarray) -> Image.Image:
+    """Extrae a Mario del fondo verde (720x1280) con despill suave y sin halo verde."""
+    b = bgr[:, :, 0].astype(np.float32)
+    g = bgr[:, :, 1].astype(np.float32)
+    r = bgr[:, :, 2].astype(np.float32)
+    max_rb = np.maximum(r, b)
+    excess = g - max_rb
+    alpha = np.clip((58.0 - excess) / 40.0, 0.0, 1.0)
+    alpha = cv2.GaussianBlur(alpha, (3, 3), 0.7)
+    g_despilled = np.where(excess > 0.0, max_rb + np.minimum(excess, 6.0), g)
+    rgba = np.stack(
+        [
+            np.clip(r, 0, 255).astype(np.uint8),
+            np.clip(g_despilled, 0, 255).astype(np.uint8),
+            np.clip(b, 0, 255).astype(np.uint8),
+            np.clip(alpha * 255.0, 0, 255).astype(np.uint8),
+        ],
+        axis=2,
+    )
+    return Image.fromarray(rgba, mode="RGBA")
+
+
+class FeatherTalkMarioEngine:
+    """Motor ONNX (FeatherHuBERT + FeatherTalk 144x144) para Mario 3D en el comercial."""
+
+    def __init__(self, onnx_dir: str, voice_wav_path: str, fps: int = 24, ffmpeg_path: str = "ffmpeg"):
+        import onnxruntime as ort
+
+        self.onnx_dir = onnx_dir
+        self.fps = fps
+        self.ffmpeg_path = ffmpeg_path
+
+        hubert_path = os.path.join(onnx_dir, "feather_hubert.onnx")
+        ft_path = os.path.join(onnx_dir, "feathertalk_144.onnx")
+        bboxes_path = os.path.join(onnx_dir, "bboxes_240.npy")
+        closed_win_path = os.path.join(onnx_dir, "closed_win.npy")
+        video_path = os.path.join(onnx_dir, "mario_25fps.mp4")
+        ref_194_path = os.path.join(onnx_dir, "ref_194.jpg")
+
+        sess_opts = ort.SessionOptions()
+        sess_opts.intra_op_num_threads = 4
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+
+        self.hubert_sess = ort.InferenceSession(hubert_path, sess_options=sess_opts, providers=["CPUExecutionProvider"])
+        self.ft_sess = ort.InferenceSession(ft_path, sess_options=sess_opts, providers=["CPUExecutionProvider"])
+        self.bboxes = np.load(bboxes_path)
+        self.closed_win = np.load(closed_win_path).astype(np.float32)
+
+        # Cargar los 250 fotogramas base de Mario a 25fps
+        self.base_frames = []
+        cap = cv2.VideoCapture(video_path)
+        while True:
+            ret, frm = cap.read()
+            if not ret:
+                break
+            self.base_frames.append(frm)
+        cap.release()
+
+        ref_img = cv2.imread(ref_194_path) if os.path.exists(ref_194_path) else self.base_frames[194]
+        ref_crop = _crop_face(ref_img, tuple(self.bboxes[194]), crop_size=FACE_CROP_SIZE)
+        self.ref_inner = _extract_inner(ref_crop, inner_size=FACE_INNER_SIZE)
+
+        base_seq = list(range(24, min(249, len(self.base_frames))))
+        ping_pong = base_seq + base_seq[-2:0:-1]
+        start_offset = ping_pong.index(194) if 194 in ping_pong else 0
+        self.ping_pong = ping_pong[start_offset:] + ping_pong[:start_offset]
+        self.pp_cursor = 0
+
+        # Limitar la máscara neuronal exclusivamente a la zona de boca/bigote/mentón (MASK_RECT escalado a 144x144: x=15..129, y=54..126)
+        # para no re-escalar ni alterar ojos, nariz o gorra del render 3D original.
+        mask_alpha = np.zeros((FACE_INNER_SIZE, FACE_INNER_SIZE), dtype=np.float32)
+        mask_alpha[50:128, 15:129] = 1.0
+        self.mask_alpha = cv2.GaussianBlur(mask_alpha, (27, 27), 7.0)[..., None]
+
+        # Extraer características HuBERT a 25Hz y energía RMS por frame del audio completo
+        self.feats_25, self.rms_24fps, self.total_frames = self._analyze_audio(voice_wav_path, fps=fps)
+
+    def _analyze_audio(self, voice_wav_path: str, fps: int = 24):
+        tmp_16k = voice_wav_path + ".tmp16k_ft.wav"
+        subprocess.run(
+            [
+                self.ffmpeg_path,
+                "-y",
+                "-i",
+                voice_wav_path,
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-c:a",
+                "pcm_s16le",
+                tmp_16k,
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            with wave.open(tmp_16k, "rb") as wf:
+                pcm = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+            wav_f = pcm.astype(np.float32) / 32768.0
+        finally:
+            if os.path.exists(tmp_16k):
+                os.remove(tmp_16k)
+
+        sr = 16000
+        dur_sec = len(wav_f) / float(sr)
+        total_frames = int(round(dur_sec * fps))
+
+        # Calcular RMS por frame a `fps`
+        rms_arr = np.zeros(total_frames, dtype=np.float32)
+        win_samples = int(0.05 * sr)
+        for i in range(total_frames):
+            c_idx = int((i / float(fps)) * sr)
+            s_i = max(0, c_idx - win_samples // 2)
+            e_i = min(len(wav_f), c_idx + win_samples // 2)
+            if e_i > s_i:
+                rms_arr[i] = float(np.sqrt(np.mean(wav_f[s_i:e_i] ** 2)))
+
+        # Extraer FeatherHuBERT por bloques de 20s con solapamiento de 1s y padding de 0.5s en los extremos
+        pad_16k = np.zeros(int(0.5 * sr), dtype=np.float32)
+        wav_norm_global = (wav_f - wav_f.mean()) / np.sqrt(wav_f.var() + 1e-7)
+        wav_padded = np.concatenate([pad_16k, wav_norm_global, pad_16k]).astype(np.float32)
+
+        in_name = self.hubert_sess.get_inputs()[0].name
+        chunk_samples = sr * 20
+        overlap_samples = sr * 1
+
+        if len(wav_padded) <= chunk_samples:
+            hu_out = self.hubert_sess.run(None, {in_name: wav_padded[None, :]})[0][0]
+        else:
+            chunks_out = []
+            pos = 0
+            while pos < len(wav_padded):
+                end = min(len(wav_padded), pos + chunk_samples)
+                seg = wav_padded[pos:end]
+                seg = (seg - seg.mean()) / np.sqrt(seg.var() + 1e-7)
+                f_seg = self.hubert_sess.run(None, {in_name: seg.astype(np.float32)[None, :]})[0][0]
+                if pos == 0:
+                    chunks_out.append(f_seg)
+                else:
+                    chunks_out.append(f_seg[50:])
+                if end >= len(wav_padded):
+                    break
+                pos = end - overlap_samples
+            hu_out = np.concatenate(chunks_out, axis=0)
+
+        if hu_out.shape[0] % 2 != 0:
+            hu_out = hu_out[:-1]
+        feats_25 = hu_out.reshape(-1, 2, 1024).astype(np.float32)
+        return feats_25, rms_arr, total_frames
+
+    def synthesize_mario_rgba(self, frame_idx: int) -> tuple[Image.Image, float]:
+        t_sec = frame_idx / float(self.fps)
+        rms_val = float(self.rms_24fps[min(frame_idx, len(self.rms_24fps) - 1)])
+        is_silent = rms_val < 0.010
+
+        bg_idx = self.ping_pong[self.pp_cursor % len(self.ping_pong)]
+        self.pp_cursor += 1
+
+        if is_silent:
+            aud_in = self.closed_win
+        else:
+            idx_25 = int(round(t_sec * 25.0))
+            center = min(max(10, idx_25 + 12), self.feats_25.shape[0] - 10)
+            aud_win = self.feats_25[center - 10 : center + 10]
+            aud_in = aud_win.reshape(1, 40, 1024).astype(np.float32)
+
+        frame_bgr = self.base_frames[bg_idx].copy()
+        xmin, ymin, xmax, ymax = [int(v) for v in self.bboxes[bg_idx]]
+
+        crop_152 = _crop_face(frame_bgr, (xmin, ymin, xmax, ymax), crop_size=FACE_CROP_SIZE)
+        inner = _extract_inner(crop_152, inner_size=FACE_INNER_SIZE)
+        masked = _mask_mouth(inner.copy(), inner_size=FACE_INNER_SIZE)
+
+        inp_chw = np.concatenate([self.ref_inner, masked], axis=2).transpose(2, 0, 1).astype(np.float32) / 255.0
+        inp_chw = inp_chw[None, ...]
+
+        pred = self.ft_sess.run(None, {"input": inp_chw, "audio": aud_in})[0][0]
+        pred_bgr = np.clip(pred.transpose(1, 2, 0) * 255.0, 0.0, 255.0).astype(np.float32)
+
+        blended_inner = (pred_bgr * self.mask_alpha + inner.astype(np.float32) * (1.0 - self.mask_alpha)).astype(np.uint8)
+        b = FACE_BORDER
+        crop_152[b : b + FACE_INNER_SIZE, b : b + FACE_INNER_SIZE] = blended_inner
+        frame_bgr[ymin:ymax, xmin:xmax] = cv2.resize(
+            crop_152, (xmax - xmin, ymax - ymin), interpolation=cv2.INTER_LANCZOS4
+        )
+
+        mario_rgba = _key_mario_green_screen(frame_bgr)
+        return mario_rgba, rms_val
+
+
 class CleanDreamCraftersRenderer:
-    def __init__(self, modular_rig, voice_analysis):
-        self.rig = modular_rig
-        self.va = voice_analysis
+    def __init__(self, ft_engine: FeatherTalkMarioEngine):
+        self.ft = ft_engine
         self.W = 720
         self.H = 1280
 
@@ -313,7 +607,7 @@ class CleanDreamCraftersRenderer:
 
         raw_logo = load_pil_rgba(os.path.join(LANDING_DIR, "logo-text.png"))
         if raw_logo:
-            r_c, g_c, b_c, a_c = raw_logo.split()
+            _, _, _, a_c = raw_logo.split()
             white_rgb = Image.new("RGB", raw_logo.size, (250, 246, 238))
             self.logo_text = Image.merge("RGBA", (*white_rgb.split(), a_c))
         else:
@@ -323,7 +617,7 @@ class CleanDreamCraftersRenderer:
         self.unlocked_frames = sorted(glob.glob(os.path.join(REAL_CAP_DIR, "unlocked", "frame_*.png")))
         self.website_frames = sorted(glob.glob(os.path.join(REAL_CAP_DIR, "website", "frame_*.png")))
         print(
-            f"Frames moviles reales cargados: gameplay={len(self.gameplay_frames)}, "
+            f"Frames moviles reales cargados (Pantalla Completa 720x1280): gameplay={len(self.gameplay_frames)}, "
             f"unlocked={len(self.unlocked_frames)}, website={len(self.website_frames)}"
         )
 
@@ -339,7 +633,6 @@ class CleanDreamCraftersRenderer:
         bg_arr[:, :, 2] = np.clip(19 + glow * 58 + nebula * 42, 0, 255).astype(np.uint8)
         self.clean_dark_bg = Image.fromarray(bg_arr).convert("RGBA")
 
-        # Inicializar campo de estrellas, chispas cósmicas de 4 puntas y cometas estilo Mario Galaxy
         rng = np.random.RandomState(2026)
         palette_rgb = [
             (255, 255, 255),
@@ -394,9 +687,6 @@ class CleanDreamCraftersRenderer:
         self.f_url = get_font(18, mono=True)
         self.f_intro_sub = get_font(21, bold=True, mono=True)
 
-        self.last_pose_id = None
-        self.pose_change_frame = -999
-
     def _draw_four_point_spark(self, draw_obj, cx, cy, size, color_rgb, alpha_float):
         if alpha_float <= 0.05 or size < 1.5:
             return
@@ -421,17 +711,10 @@ class CleanDreamCraftersRenderer:
         draw_obj.polygon(pts, fill=color_rgb + (a_main,))
 
     def render_cosmic_galaxy_bg(self, idx):
-        """
-        Replica el cielo estelar de la invitación de Super Mario Galaxy:
-        - Puntos estelares con parallax y parpadeo
-        - Chispas cósmicas de 4 puntas pulsantes (#ffe055, #38e8ff, #ffffff, #ff3d7f)
-        - Cometas fugaces diagonales con estela luminosa y cabeza de estrella de 4 puntas
-        """
         canvas = self.clean_dark_bg.copy()
         overlay = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
         od = ImageDraw.Draw(overlay)
 
-        # 1. Puntos estelares con parallax
         for st in self.cosmic_dots:
             x = (st["x0"] - idx * st["speed"]) % self.W
             y = st["y0"]
@@ -440,7 +723,6 @@ class CleanDreamCraftersRenderer:
             r = st["r"]
             od.ellipse((x - r, y - r, x + r, y + r), fill=st["color"] + (alpha,))
 
-        # 2. Chispas cósmicas de 4 puntas pulsantes
         for sp in self.cosmic_sparks:
             x = (sp["x0"] - idx * sp["drift_speed"]) % self.W
             y = sp["y0"]
@@ -449,7 +731,6 @@ class CleanDreamCraftersRenderer:
             cur_size = sp["size"] * (0.72 + 0.34 * s_val)
             self._draw_four_point_spark(od, x, y, cur_size, sp["color"], alpha)
 
-        # 3. Cometas fugaces diagonales (2 carriles desfasados para presencia continua)
         for slot in range(2):
             period = 42
             local_f = (idx + slot * 21) % period
@@ -470,7 +751,6 @@ class CleanDreamCraftersRenderer:
                 tx = cx - math.cos(angle) * tail_len
                 ty = cy - math.sin(angle) * tail_len
 
-                # Dibujar estela segmentada con degradado de opacidad y grosor
                 steps = 16
                 for s_i in range(steps):
                     u0 = s_i / float(steps)
@@ -484,7 +764,6 @@ class CleanDreamCraftersRenderer:
                     if seg_alpha > 4:
                         od.line([(p0x, p0y), (p1x, p1y)], fill=pal["tail"] + (seg_alpha,), width=width_s)
 
-                # Cabeza brillante de 4 puntas del cometa
                 self._draw_four_point_spark(od, cx, cy, 9.5, pal["head"], min(1.0, life * 1.15))
 
         canvas.alpha_composite(overlay)
@@ -579,10 +858,6 @@ class CleanDreamCraftersRenderer:
         return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
     def render_logo_outro_frame(self, outro_prog, idx=0):
-        """
-        Cierre con el ícono D animado mientras se escucha la voz de Mario diciendo
-        'DreamCrafters, artificialmente hechos a mano.'
-        """
         canvas = self.render_cosmic_galaxy_bg(idx)
         if outro_prog < 0.18:
             fade_in = outro_prog / 0.18
@@ -681,23 +956,23 @@ class CleanDreamCraftersRenderer:
         rgb = np.array(canvas.convert("RGB"))
         return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
-    def render_phone_content(self, scene_type, sc_prog):
-        pw, ph = 376, 736
+    def render_fullscreen_invitation(self, scene_type, sc_prog):
+        """Renderiza las capturas móviles reales a pantalla completa (720x1280)."""
         if scene_type == "gameplay" and self.gameplay_frames:
             f_idx = min(len(self.gameplay_frames) - 1, int(sc_prog * len(self.gameplay_frames)))
-            return Image.open(self.gameplay_frames[f_idx]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
+            return Image.open(self.gameplay_frames[f_idx]).convert("RGBA").resize((self.W, self.H), Image.Resampling.LANCZOS)
 
         if scene_type == "unlocked" and self.unlocked_frames:
             f_idx = min(len(self.unlocked_frames) - 1, int(sc_prog * len(self.unlocked_frames)))
-            return Image.open(self.unlocked_frames[f_idx]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
+            return Image.open(self.unlocked_frames[f_idx]).convert("RGBA").resize((self.W, self.H), Image.Resampling.LANCZOS)
 
         if scene_type == "website" and self.website_frames:
             f_idx = min(len(self.website_frames) - 1, int(sc_prog * len(self.website_frames)))
-            return Image.open(self.website_frames[f_idx]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
+            return Image.open(self.website_frames[f_idx]).convert("RGBA").resize((self.W, self.H), Image.Resampling.LANCZOS)
 
         if self.unlocked_frames:
-            return Image.open(self.unlocked_frames[-1]).convert("RGBA").resize((pw, ph), Image.Resampling.LANCZOS)
-        return Image.new("RGBA", (pw, ph), (11, 13, 18, 255))
+            return Image.open(self.unlocked_frames[-1]).convert("RGBA").resize((self.W, self.H), Image.Resampling.LANCZOS)
+        return Image.new("RGBA", (self.W, self.H), (11, 13, 18, 255))
 
     def _draw_floor_contact_shadow(self, canvas, cx, boot_y, rx, ry, alpha=145):
         shadow = Image.new("RGBA", (self.W, self.H), (0, 0, 0, 0))
@@ -722,107 +997,33 @@ class CleanDreamCraftersRenderer:
         if sc_type == "cta":
             sc_dur = max(0.1, sc["end"] - sc["start"])
             t_in_sc = sc_prog * sc_dur
-            ending_logo_start_sec = 4.85
+            ending_logo_start_sec = 4.55
             if t_in_sc >= ending_logo_start_sec:
                 outro_prog = min(1.0, (t_in_sc - ending_logo_start_sec) / max(0.1, sc_dur - ending_logo_start_sec))
                 return self.render_logo_outro_frame(outro_prog, idx=idx)
 
+        # ESCENAS GAMEPLAY / UNLOCKED / WEBSITE -> PANTALLA COMPLETA (720x1280)
+        if sc_type in ("gameplay", "unlocked", "website"):
+            canvas = self.render_fullscreen_invitation(sc_type, sc_prog)
+            rgb = np.array(canvas.convert("RGB"))
+            return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+
+        # ESCENAS HOOK / CTA -> Mario 3D (FeatherTalk ONNX) de Cuerpo Completo centrado en pantalla
         accent = sc["accent_rgb"]
-        pose_id = self.rig.select_symmetric_pose(sc_type, sc_prog)
-        if pose_id != self.last_pose_id:
-            self.last_pose_id = pose_id
-            self.pose_change_frame = idx
+        canvas = self.party_bokeh_bg.copy()
 
-        va_idx = min(idx, len(self.va["visemes"]) - 1)
-        viseme_id = int(self.va["visemes"][va_idx])
-        rms_val = float(self.va["rms_norm"][va_idx])
-        is_speaking = bool(self.va["is_speaking"][va_idx])
+        mario_rgba, _ = self.ft.synthesize_mario_rgba(idx)
+        self._draw_floor_contact_shadow(canvas, self.W // 2, 1132, rx=165, ry=22, alpha=155)
+        canvas.alpha_composite(mario_rgba, (0, 0))
 
-        # Cabeza con sutil asentimiento vertical al hablar (0px desplazamiento horizontal -> eje central 100% fijo)
-        nod_px = int(round(rms_val * 2.0)) if is_speaking else 0
-        mario_pil = self.rig.get_puppet_pil(pose=pose_id, viseme_idx=viseme_id, nod_px=nod_px)
-
-        # Squash & Stretch sutil anclado en la suela de las botas
-        frames_since_pop = idx - self.pose_change_frame
-        pop_scale_y = 1.0
-        pop_scale_x = 1.0
-        if 0 <= frames_since_pop < 3 and idx > 35:
-            pop_env = math.sin((frames_since_pop + 1) / 3.0 * math.pi)
-            pop_scale_y = 1.0 + 0.016 * pop_env
-            pop_scale_x = 1.0 - 0.008 * pop_env
-
-        # ESCENAS HOOK / CTA -> Mario de Cuerpo Completo centrado en pantalla
-        if sc_type in ("hook", "cta"):
-            canvas = self.party_bokeh_bg.copy()
-
-            base_h = 860
-            base_w = int(round(base_h * (760.0 / 920.0)))
-            mw = int(round(base_w * pop_scale_x))
-            mh = int(round(base_h * pop_scale_y))
-            mario_full = mario_pil.resize((mw, mh), Image.Resampling.LANCZOS)
-
-            floor_y = 1138
-            mario_x = (self.W - mw) // 2
-            mario_y = floor_y - mh
-            boot_sole_y = mario_y + int(round(mh * (876.0 / 920.0)))
-            self._draw_floor_contact_shadow(canvas, self.W // 2, boot_sole_y, rx=145, ry=20, alpha=145)
-
-            canvas.alpha_composite(mario_full, (mario_x, mario_y))
-
-            grad = Image.new("RGBA", (self.W, 240), (0, 0, 0, 0))
-            gd = ImageDraw.Draw(grad)
-            for gy in range(240):
-                alpha_g = int(210 * ((gy / 240.0) ** 1.5))
-                gd.line([(0, gy), (self.W, gy)], fill=(8, 10, 16, alpha_g))
-            canvas.alpha_composite(grad, (0, self.H - 240))
-
-        # ESCENAS GAMEPLAY / UNLOCKED / WEBSITE -> Fondo cósmico con estrellas y cometas + Celular + Mario
-        else:
-            canvas = self.render_cosmic_galaxy_bg(idx)
-            cd = ImageDraw.Draw(canvas)
-
-            phone_w, phone_h = 376, 736
-            phone_x = 22
-            phone_y = 172
-
-            cd.rounded_rectangle(
-                (phone_x - 10, phone_y - 10, phone_x + phone_w + 10, phone_y + phone_h + 10),
-                radius=44,
-                fill=(18, 22, 30, 255),
-                outline=(250, 246, 238, 165),
-                width=3,
-            )
-
-            phone_scr = self.render_phone_content(sc_type, sc_prog)
-            mask = Image.new("L", (phone_w, phone_h), 0)
-            ImageDraw.Draw(mask).rounded_rectangle((0, 0, phone_w, phone_h), radius=36, fill=255)
-            canvas.paste(phone_scr, (phone_x, phone_y), mask)
-
-            cd = ImageDraw.Draw(canvas)
-            sp_w = 74
-            sp_x = phone_x + (phone_w - sp_w) // 2
-            cd.rounded_rectangle((sp_x, phone_y - 7, sp_x + sp_w, phone_y - 3), radius=2, fill=(60, 68, 82, 220))
-            hi_w = 124
-            hi_x = phone_x + (phone_w - hi_w) // 2
-            cd.rounded_rectangle((hi_x, phone_y + phone_h - 14, hi_x + hi_w, phone_y + phone_h - 9), radius=3, fill=(255, 255, 255, 190))
-
-            base_h = 610
-            base_w = int(round(base_h * (760.0 / 920.0)))
-            mw = int(round(base_w * pop_scale_x))
-            mh = int(round(base_h * pop_scale_y))
-            mario_side = mario_pil.resize((mw, mh), Image.Resampling.LANCZOS)
-
-            cx_side = 552
-            floor_y = 1138
-            mario_x = cx_side - mw // 2
-            mario_y = floor_y - mh
-            boot_sole_y = mario_y + int(round(mh * (876.0 / 920.0)))
-            self._draw_floor_contact_shadow(canvas, cx_side, boot_sole_y, rx=102, ry=15, alpha=145)
-
-            canvas.alpha_composite(mario_side, (mario_x, mario_y))
+        grad = Image.new("RGBA", (self.W, 240), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(grad)
+        for gy in range(240):
+            alpha_g = int(210 * ((gy / 240.0) ** 1.5))
+            gd.line([(0, gy), (self.W, gy)], fill=(8, 10, 16, alpha_g))
+        canvas.alpha_composite(grad, (0, self.H - 240))
 
         cd = ImageDraw.Draw(canvas)
-
         if self.d_icon_header:
             canvas.alpha_composite(self.d_icon_header, (32, 28))
         if self.logo_text:
@@ -851,7 +1052,6 @@ def main():
     parser.add_argument("--output", default=os.path.join(REPO_ROOT, "out", "video_final_dreamcrafters.mp4"))
     args = parser.parse_args()
 
-    # Si aún no existen las capturas móviles reales, ejecutarlas automáticamente con Playwright
     if not os.path.exists(os.path.join(REAL_CAP_DIR, "d_icon_hd.png")):
         from capture_real_mario_mobile import capture_all
         capture_all()
@@ -863,18 +1063,17 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     clean_wav = os.path.join(out_dir, "mario_cloned_voice.wav")
 
-    print("Sintetizando narracion con ChatterboxMultilingualTTS local (entonacion original)...")
+    print("Ensamblando narracion clonada de Mario (Hugging Face Chatterbox-Multilingual-TTS)...")
     scenes = synthesize_cloned_scenes_local(SCENES_CLEAN, REF_WAV, clean_wav, ffmpeg_path=ffmpeg_path)
 
     fps = 24
-    print("Cargando libreria MarioModularRig (2K Symmetric Full-Body Rig)...")
-    modular_rig = MarioModularRig(MODULAR_RIG_DIR)
-    voice_analysis = modular_rig.analyze_voice_visemes(clean_wav, fps=fps, intro_duration_sec=INTRO_DURATION_SEC)
+    print("Inicializando motor FeatherTalk ONNX 144x144 para Mario 3D...")
+    ft_engine = FeatherTalkMarioEngine(FEATHERTALK_ONNX_DIR, clean_wav, fps=fps, ffmpeg_path=ffmpeg_path)
 
-    total_frames = voice_analysis["total_frames"]
-    print(f"Renderizando {total_frames} frames ({total_frames/fps:.1f}s) con las 5 poses frontales simetricas...")
+    total_frames = ft_engine.total_frames
+    print(f"Renderizando {total_frames} frames ({total_frames/fps:.1f}s) con FeatherTalk + Invitaciones a Pantalla Completa...")
 
-    renderer = CleanDreamCraftersRenderer(modular_rig, voice_analysis)
+    renderer = CleanDreamCraftersRenderer(ft_engine)
     temp_video = os.path.join(out_dir, "temp_visual_dc.mp4")
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     vw = cv2.VideoWriter(temp_video, fourcc, fps, (720, 1280))
@@ -924,7 +1123,13 @@ def main():
     )
     if os.path.exists(temp_video):
         os.remove(temp_video)
-    print(f"Video listo: {args.output}")
+
+    videos_dir = os.path.join(REPO_ROOT, "videos")
+    os.makedirs(videos_dir, exist_ok=True)
+    published_copy = os.path.join(videos_dir, "01_mario_galaxy.mp4")
+    if os.path.abspath(args.output) != os.path.abspath(published_copy):
+        shutil.copyfile(args.output, published_copy)
+    print(f"Video listo: {args.output} (y actualizado en {published_copy})")
 
 
 if __name__ == "__main__":
