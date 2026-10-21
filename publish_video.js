@@ -40,8 +40,8 @@ function resolveVideoPath() {
       .filter(f => f.toLowerCase().endsWith('.mp4'))
       .sort();
     if (mp4Files.length > 0) {
-      // Rotación determinística por bloque de 12 horas (turno mañana / tarde) cuando hay varios videos
-      const slotIndex = Math.floor(Date.now() / (12 * 3600 * 1000)) % mp4Files.length;
+      // Rotación determinística en 3 turnos diarios (bloques de 8 horas) para publicar los 3 videos cada día
+      const slotIndex = Math.floor(Date.now() / (8 * 3600 * 1000)) % mp4Files.length;
       const chosen = mp4Files[slotIndex];
       console.log(`🎬 Videos disponibles en videos/: [${mp4Files.join(', ')}] -> Seleccionado: ${chosen}`);
       return path.join(VIDEOS_DIR, chosen);
@@ -200,6 +200,7 @@ async function main() {
 
   const results = {
     timestamp: new Date().toISOString(),
+    selected_video: path.basename(VIDEO_PATH),
     links_included: LINKS,
     dreamcrafters: {
       facebook: null,
@@ -283,7 +284,24 @@ async function main() {
     console.warn('ℹ️ Credenciales TCT_META_PAGE_ID / TCT_META_PAGE_ACCESS_TOKEN no configuradas.');
   }
 
-  if (process.env.TIKTOK_REFRESH_TOKEN && process.env.TIKTOK_CLIENT_KEY) {
+  const localTikTokBridge = path.resolve(__dirname, '..', 'krauge', 'krauge_tiktok_autopost.py');
+  if (fs.existsSync(localTikTokBridge)) {
+    try {
+      const { execFileSync } = require('child_process');
+      console.log('🎵 Publicando directo a Público en TikTok Studio Web (puente local)...');
+      execFileSync('python', [localTikTokBridge, '--force-dc-video', path.basename(VIDEO_PATH)], {
+        stdio: 'inherit'
+      });
+      results.talento_con_tarifa.tiktok = {
+        success: true,
+        mode: 'TIKTOK_STUDIO_LOCAL',
+        video: path.basename(VIDEO_PATH)
+      };
+    } catch (err) {
+      console.error('⚠️ Error en puente local TikTok Studio:', err.message);
+      results.talento_con_tarifa.tiktok = { success: false, error: err.message };
+    }
+  } else if (process.env.TIKTOK_REFRESH_TOKEN && process.env.TIKTOK_CLIENT_KEY) {
     try {
       results.talento_con_tarifa.tiktok = await publishVideoToTikTok(VIDEO_PATH, {
         title: `${DREAMCRAFTERS_TITLE} 👉 ${LINKS.mainSite} | Demo Mario: ${LINKS.marioDemo} #DreamCrafters #SuperMarioGalaxy #Minecraft #TalentoConTarifa`
@@ -297,7 +315,9 @@ async function main() {
   if (process.env.YOUTUBE_REFRESH_TOKEN && process.env.YOUTUBE_CLIENT_ID) {
     try {
       results.talento_con_tarifa.youtube = await publishVideoToYouTube(VIDEO_PATH, {
-        title: IS_MINECRAFT_VIDEO
+        title: IS_REFERIDOS_VIDEO
+          ? '💰🍄 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti? | Socios DreamCrafters #Shorts'
+          : IS_MINECRAFT_VIDEO
           ? '👑⚔️ ¡Invitación interactiva GRATIS de Minecraft! | DreamCrafters #Shorts'
           : '🍄 ¡Combo 2 en 1 por $100: Invitación Videojuego + Video Saludo de Mario! 🎮 | DreamCrafters #Shorts',
         description: TCT_CROSSPROMO_CAPTION,
