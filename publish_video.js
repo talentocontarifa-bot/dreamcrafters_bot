@@ -65,7 +65,7 @@ const LINKS = {
 
 const DREAMCRAFTERS_TITLE = IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Crea GRATIS tu invitación interactiva de Minecraft! | DreamCrafters'
-  : '🎮 ¡Invitaciones que se juegan en tu celular! ✨ Super Mario Galaxy & Minecraft | DreamCrafters';
+  : '🍄✨ ¡Invitación Interactiva de Super Mario Galaxy a solo $100 MXN! 🎮 | DreamCrafters';
 
 const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
   ? [
@@ -82,25 +82,23 @@ const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
       '#DreamCrafters #MinecraftParty #InvitacionesDigitales #FiestasInfantiles #InvitacionesMinecraft #CumpleañosMinecraft'
     ].join('\n')
   : [
-      '🍄 ¿Otra imagen fija en WhatsApp? ¡Conviértela en un videojuego real desde el celular! 🎮✨',
+      '🍄 ¿Todavía mandas invitaciones aburridas por WhatsApp? ¡Convierte el cumple de tu peque en un videojuego real de Super Mario Galaxy desde el celular! 🎮🌟',
       '',
-      'En DreamCrafters tus invitados abren el enlace en su teléfono y juegan para desbloquear todos los detalles de tu fiesta:',
-      '✅ Minijuego interactivo sin instalar apps',
-      '✅ Música épica y cuenta regresiva en vivo',
-      '✅ Ubicación exacta en Google Maps',
-      '✅ Confirmación de asistencia en 1 toque directo a tu WhatsApp',
+      'En DreamCrafters tus invitados abren tu link, saltan por el espacio y atrapan las 3 Super Estrellas para desbloquear:',
+      '⭐ Música original + Minijuego 3D sin instalar apps',
+      '📍 Mapa GPS del salón en Google Maps',
+      '📲 Confirmación de asistencia directo a tu WhatsApp',
       '',
-      '🟩 ¡CREA GRATIS LA INVITACIÓN DE MINECRAFT EN 60 SEGUNDOS!',
-      `👉 Crea la tuya aquí: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
-      `⚡ Ver evento interactivo Agentes de Luz: ${LINKS.agentesDemo}`,
+      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN y se entrega al instante!',
+      `👉 Pídela y personalízala en 1 minuto: ${LINKS.mainSite}`,
+      `🕹️ Juega el demo en vivo: ${LINKS.marioDemo}`,
       '',
-      '#DreamCrafters #InvitacionesDigitales #SuperMarioGalaxy #MinecraftParty #FiestasInfantiles #InvitacionesInteractivas #CumpleañosInfantiles'
+      '#DreamCrafters #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #InvitacionesMario #CumpleañosMarioBros #InvitacionesInteractivas'
     ].join('\n');
 
 const TCT_CROSSPROMO_TITLE = IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Regalamos invitaciones interactivas de Minecraft que se juegan en el celular! | DreamCrafters'
-  : '🚀 ¡Creamos invitaciones infantiles que son videojuegos reales en el celular! 🎮✨ | DreamCrafters x Talento con Tarifa';
+  : '🚀 ¡Invitación videojuego de Super Mario Galaxy por solo $100 MXN! 🎮🌟 | DreamCrafters x Talento con Tarifa';
 
 const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
   ? [
@@ -115,20 +113,19 @@ const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
       '#DreamCrafters #Minecraft #InvitacionesDigitales #FiestasInfantiles #TalentoConTarifa #Reels #Shorts'
     ].join('\n')
   : [
-      '🍄 ¿Ya viste nuestro nuevo proyecto en vivo? En lugar de mandar una imagen estática por WhatsApp, en DreamCrafters convertimos las invitaciones infantiles en un videojuego real desde el celular 🎮✨',
+      '🍄 ¡Mamma mia! En lugar de mandar una imagen estática por WhatsApp, en DreamCrafters convertimos la invitación de Super Mario Galaxy en un videojuego 3D real desde el celular 🎮🌟',
       '',
-      'Tus invitados atrapan monedas espaciales para desbloquear cuenta regresiva, mapa GPS en Google Maps y confirmación en 1 toque a WhatsApp.',
+      'Tus invitados saltan en gravedad cero y atrapan 3 Super Estrellas para desbloquear la fecha, mapa GPS y confirmación en 1 toque a tu WhatsApp.',
       '',
-      '🔗 LIGAS OFICIALES PARA PROBARLO HOY:',
-      `👉 Sitio Web + Creador GRATIS de Minecraft: ${LINKS.mainSite}`,
-      `🕹️ Juega la invitación de Super Mario Galaxy: ${LINKS.marioDemo}`,
-      `⚡ Mira el pase interactivo Agentes de Luz: ${LINKS.agentesDemo}`,
+      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
+      `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
+      `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
       '',
       '─────────────────────────',
       '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
       `⚡ Digitaliza o automatiza tu negocio hoy: ${LINKS.tctSite}`,
       '',
-      '#DreamCrafters #TalentoConTarifa #SuperMarioGalaxy #Minecraft #InvitacionesDigitales #FiestasInfantiles #DesarrolloWeb #InteligenciaArtificial #Reels #Shorts'
+      '#DreamCrafters #TalentoConTarifa #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #SuperMarioBros #Reels #Shorts'
     ].join('\n');
 
 async function main() {
