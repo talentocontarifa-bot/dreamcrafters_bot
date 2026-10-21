@@ -65,7 +65,7 @@ const LINKS = {
 
 const DREAMCRAFTERS_TITLE = IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Crea GRATIS tu invitación interactiva de Minecraft! | DreamCrafters'
-  : '🍄✨ ¡Invitación Interactiva de Super Mario Galaxy a solo $100 MXN! 🎮 | DreamCrafters';
+  : '🍄✨ ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮 | DreamCrafters';
 
 const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
   ? [
@@ -82,23 +82,22 @@ const DREAMCRAFTERS_CAPTION = IS_MINECRAFT_VIDEO
       '#DreamCrafters #MinecraftParty #InvitacionesDigitales #FiestasInfantiles #InvitacionesMinecraft #CumpleañosMinecraft'
     ].join('\n')
   : [
-      '🍄 ¿Todavía mandas invitaciones aburridas por WhatsApp? ¡Convierte el cumple de tu peque en un videojuego real de Super Mario Galaxy desde el celular! 🎮🌟',
+      '🍄 ¿Te imaginas que yo mismo felicite a tu peque por su nombre e invite a todos sus amigos? ¡En DreamCrafters te llevas el Combo 2 en 1 de Super Mario Galaxy por solo $100 MXN! 🎮🌟',
       '',
-      'En DreamCrafters tus invitados abren tu link, saltan por el espacio y atrapan las 3 Super Estrellas para desbloquear:',
-      '⭐ Música original + Minijuego 3D sin instalar apps',
-      '📍 Mapa GPS del salón en Google Maps',
-      '📲 Confirmación de asistencia directo a tu WhatsApp',
+      '1️⃣ Primero: Tus invitados abren tu link, saltan por el espacio y atrapan las 3 Super Estrellas en un minijuego 3D real.',
+      '2️⃣ Segundo: ¡Desbloquean la invitación con un VIDEO PERSONALIZADO donde Mario saluda a tu peque por su nombre, dice cuántos años cumple, la fecha de la fiesta y muestra la dirección en pantalla!',
+      '📍 Incluye Mapa GPS en Google Maps y confirmación en 1 toque a tu WhatsApp.',
       '',
-      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN y se entrega al instante!',
+      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
       `👉 Pídela y personalízala en 1 minuto: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo en vivo: ${LINKS.marioDemo}`,
+      `🕹️ Juega el demo y mira el video saludo en vivo: ${LINKS.marioDemo}`,
       '',
-      '#DreamCrafters #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #InvitacionesMario #CumpleañosMarioBros #InvitacionesInteractivas'
+      '#DreamCrafters #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #InvitacionesMario #CumpleañosMarioBros #VideoSaludoMario'
     ].join('\n');
 
 const TCT_CROSSPROMO_TITLE = IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Regalamos invitaciones interactivas de Minecraft que se juegan en el celular! | DreamCrafters'
-  : '🚀 ¡Invitación videojuego de Super Mario Galaxy por solo $100 MXN! 🎮🌟 | DreamCrafters x Talento con Tarifa';
+  : '🚀 ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮🌟 | DreamCrafters';
 
 const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
   ? [
@@ -113,13 +112,14 @@ const TCT_CROSSPROMO_CAPTION = IS_MINECRAFT_VIDEO
       '#DreamCrafters #Minecraft #InvitacionesDigitales #FiestasInfantiles #TalentoConTarifa #Reels #Shorts'
     ].join('\n')
   : [
-      '🍄 ¡Mamma mia! En lugar de mandar una imagen estática por WhatsApp, en DreamCrafters convertimos la invitación de Super Mario Galaxy en un videojuego 3D real desde el celular 🎮🌟',
+      '🍄 ¡Mamma mia! En DreamCrafters armamos el Combo 2 en 1 definitivo de Super Mario Galaxy por solo $100 MXN 🎮🌟',
       '',
-      'Tus invitados saltan en gravedad cero y atrapan 3 Super Estrellas para desbloquear la fecha, mapa GPS y confirmación en 1 toque a tu WhatsApp.',
+      '1️⃣ Tus invitados juegan en su celular atrapando las 3 Super Estrellas en gravedad cero.',
+      '2️⃣ ¡Al ganar desbloquean la invitación con un VIDEO PERSONALIZADO donde Mario felicita al cumpleañero por su nombre, dice cuántos años cumple, la fecha y la dirección del salón, más mapa GPS y confirmación a WhatsApp!',
       '',
       '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
       `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
+      `🕹️ Juega el demo con video saludo: ${LINKS.marioDemo}`,
       '',
       '─────────────────────────',
       '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
@@ -257,7 +257,9 @@ async function main() {
   if (process.env.YOUTUBE_REFRESH_TOKEN && process.env.YOUTUBE_CLIENT_ID) {
     try {
       results.talento_con_tarifa.youtube = await publishVideoToYouTube(VIDEO_PATH, {
-        title: '🎮 ¡Invitaciones que se juegan en el celular! Super Mario Galaxy & Minecraft | DreamCrafters #Shorts',
+        title: IS_MINECRAFT_VIDEO
+          ? '👑⚔️ ¡Invitación interactiva GRATIS de Minecraft! | DreamCrafters #Shorts'
+          : '🍄 ¡Combo 2 en 1 por $100: Invitación Videojuego + Video Saludo de Mario! 🎮 | DreamCrafters #Shorts',
         description: TCT_CROSSPROMO_CAPTION,
         tags: [
           'DreamCrafters',
