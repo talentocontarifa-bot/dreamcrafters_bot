@@ -15,6 +15,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { publishVideoToFacebook } = require('./facebook_publisher');
@@ -23,6 +24,11 @@ const { publishVideoToTikTok } = require('./tiktok_publisher');
 const { publishVideoToYouTube } = require('./youtube_publisher');
 
 const VIDEOS_DIR = path.join(__dirname, 'videos');
+const ALLOWED_VIDEOS = [
+  '01_mario_galaxy.mp4',
+  '02_rey_steve_minecraft_gratis.mp4',
+  '03_mario_referidos_20.mp4'
+];
 
 function resolveVideoPath() {
   if (process.env.VIDEO_PATH && process.env.VIDEO_PATH !== 'auto') {
@@ -37,23 +43,78 @@ function resolveVideoPath() {
   if (fs.existsSync(VIDEOS_DIR)) {
     const mp4Files = fs
       .readdirSync(VIDEOS_DIR)
-      .filter(f => f.toLowerCase().endsWith('.mp4'))
+      .filter(f => ALLOWED_VIDEOS.includes(f))
       .sort();
     if (mp4Files.length > 0) {
-      // Rotación determinística en 3 turnos diarios (bloques de 8 horas) para publicar los 3 videos cada día
+      // Rotación determinística en 3 turnos diarios (bloques de 8 horas) para publicar los 3 videos oficiales cada día
       const slotIndex = Math.floor(Date.now() / (8 * 3600 * 1000)) % mp4Files.length;
       const chosen = mp4Files[slotIndex];
-      console.log(`🎬 Videos disponibles en videos/: [${mp4Files.join(', ')}] -> Seleccionado: ${chosen}`);
+      console.log(`🎬 Videos oficiales en videos/: [${mp4Files.join(', ')}] -> Seleccionado: ${chosen}`);
       return path.join(VIDEOS_DIR, chosen);
     }
   }
 
-  return path.join(__dirname, 'out', 'video_final_dreamcrafters.mp4');
+  return path.join(VIDEOS_DIR, '01_mario_galaxy.mp4');
 }
 
-const VIDEO_PATH = resolveVideoPath();
-const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(path.basename(VIDEO_PATH));
-const IS_REFERIDOS_VIDEO = /referidos|socios/i.test(path.basename(VIDEO_PATH));
+/**
+ * Genera una copia temporal con huella digital (MD5 + pHash visual/acústico) 100% nueva
+ * para evitar que TikTok, Instagram Reels, Facebook y YouTube Shorts congelen el video en 0 vistas por duplicado.
+ */
+function createFreshVideoFingerprint(srcPath) {
+  try {
+    const outDir = path.join(__dirname, 'out');
+    fs.mkdirSync(outDir, { recursive: true });
+    const stamp = Date.now();
+    const freshPath = path.join(outDir, `fresh_${stamp}_${path.basename(srcPath)}`);
+    // Variación sutil e imperceptible al ojo humano: zoom 1.01x-1.02x + micro-ajuste de contraste/brillo + metadatos limpios
+    const brightness = ((stamp % 5) - 2) * 0.004; // -0.008 a +0.008
+    const contrast = 1.0 + ((stamp % 3) + 1) * 0.005; // 1.005 a 1.015
+    const vf = `scale=732:1300,crop=720:1280,eq=brightness=${brightness.toFixed(4)}:contrast=${contrast.toFixed(4)}`;
+    execFileSync(
+      'ffmpeg',
+      [
+        '-y',
+        '-i',
+        srcPath,
+        '-map_metadata',
+        '-1',
+        '-vf',
+        vf,
+        '-af',
+        'volume=1.005',
+        '-c:v',
+        'libx264',
+        '-preset',
+        'veryfast',
+        '-crf',
+        '21',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-movflags',
+        '+faststart',
+        freshPath
+      ],
+      { stdio: 'ignore' }
+    );
+    if (fs.existsSync(freshPath) && fs.statSync(freshPath).size > 50000) {
+      console.log(`✨ Huella digital renovada (anti-duplicado): ${path.basename(freshPath)}`);
+      return freshPath;
+    }
+  } catch (err) {
+    console.warn(`⚠️ Aviso ffmpeg anti-duplicado (${err.message}), usando archivo original.`);
+  }
+  return srcPath;
+}
+
+const RAW_VIDEO_PATH = resolveVideoPath();
+const VIDEO_PATH = createFreshVideoFingerprint(RAW_VIDEO_PATH);
+const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(path.basename(RAW_VIDEO_PATH));
+const IS_REFERIDOS_VIDEO = /referidos|socios/i.test(path.basename(RAW_VIDEO_PATH));
 
 // Ligas oficiales que SIEMPRE van en los campos de texto de las redes sociales
 const LINKS = {
