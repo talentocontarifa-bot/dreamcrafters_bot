@@ -455,14 +455,18 @@ async function main() {
     try {
       results.talento_con_tarifa.youtube = await publishVideoToYouTube(VIDEO_PATH, {
         title: IS_REFERIDOS_VIDEO
-          ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI? | Socios DreamCrafters #Shorts'
+          ? '💰⚡ ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI? | Socios DreamCrafters #Shorts'
           : IS_MINECRAFT_VIDEO
           ? '👑⚔️ ¡Invitación interactiva GRATIS de Minecraft! | DreamCrafters #Shorts'
+          : IS_BTTF_VIDEO
+          ? '🚗⚡ ¡Combo 2 en 1 de Volver al Futuro 88 MPH por $150 MXN: Cabina 360° + Marty McFly! #Shorts'
           : '🦙💥 ¡Combo 2 en 1 de Fortnite Battle Royale por $150 MXN: Invitación Videojuego 3D! 🎮🏆 #Shorts',
         description: TCT_CROSSPROMO_CAPTION,
         tags: [
           'DreamCrafters',
           'Invitaciones Digitales',
+          'Volver al Futuro',
+          'Back to the Future',
           'Fortnite',
           'Fortnite Battle Royale',
           'Minecraft',
