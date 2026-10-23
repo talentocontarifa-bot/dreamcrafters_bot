@@ -12,9 +12,11 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: '30 16 * * *' # 10:30 AM CDMX (Turno 1 de 3 — desfasado de TCT y PET)
-    - cron: '30 21 * * *' # 03:30 PM CDMX (Turno 2 de 3 — desfasado de TCT y PET)
-    - cron: '30 2 * * *'  # 08:30 PM CDMX (Turno 3 de 3 — desfasado de TCT y PET)
+    - cron: '30 14 * * *' # 09:30 AM Cancún (Turno 1 — Fortnite Juego $150 Hombre: Capitán Jonesy)
+    - cron: '30 17 * * *' # 12:30 PM Cancún (Turno 2 — Fortnite Afiliados 20% Hombre: Capitán Jonesy)
+    - cron: '30 20 * * *' # 03:30 PM Cancún (Turno 3 — Fortnite Juego $150 Mujer: Brite Bomber)
+    - cron: '30 23 * * *' # 06:30 PM Cancún (Turno 4 — Fortnite Afiliados 20% Mujer: Brite Bomber)
+    - cron: '0 2 * * *'   # 09:00 PM Cancún (Turno 5 — Minecraft Gratis: Rey Steve)
 
 concurrency:
   group: dreamcrafters-video-publication

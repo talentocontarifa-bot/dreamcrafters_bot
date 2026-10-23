@@ -25,10 +25,39 @@ const { publishVideoToYouTube } = require('./youtube_publisher');
 
 const VIDEOS_DIR = path.join(__dirname, 'videos');
 const ALLOWED_VIDEOS = [
-  '01_mario_galaxy.mp4',
+  '01_fortnite_juego_150_hombre.mp4',
   '02_rey_steve_minecraft_gratis.mp4',
-  '03_mario_referidos_20.mp4'
+  '03_fortnite_afiliados_20_hombre.mp4',
+  '04_fortnite_juego_150_mujer.mp4',
+  '05_fortnite_afiliados_20_mujer.mp4'
 ];
+
+function selectVideoByUtcSchedule(mp4Files) {
+  const utcHour = new Date().getUTCHours();
+  // Mapeo determinístico de los 5 turnos diarios (UTC):
+  // - 14:30 UTC (09:30 AM Cancún): 01_fortnite_juego_150_hombre.mp4
+  // - 17:30 UTC (12:30 PM Cancún): 03_fortnite_afiliados_20_hombre.mp4
+  // - 20:30 UTC (03:30 PM Cancún): 04_fortnite_juego_150_mujer.mp4
+  // - 23:30 UTC (06:30 PM Cancún): 05_fortnite_afiliados_20_mujer.mp4
+  // - 02:00 UTC (09:00 PM Cancún): 02_rey_steve_minecraft_gratis.mp4
+  let preferred = '01_fortnite_juego_150_hombre.mp4';
+  if (utcHour >= 13 && utcHour < 16) {
+    preferred = '01_fortnite_juego_150_hombre.mp4';
+  } else if (utcHour >= 16 && utcHour < 19) {
+    preferred = '03_fortnite_afiliados_20_hombre.mp4';
+  } else if (utcHour >= 19 && utcHour < 22) {
+    preferred = '04_fortnite_juego_150_mujer.mp4';
+  } else if (utcHour >= 22 || utcHour < 1) {
+    preferred = '05_fortnite_afiliados_20_mujer.mp4';
+  } else {
+    preferred = '02_rey_steve_minecraft_gratis.mp4';
+  }
+  if (mp4Files.includes(preferred)) {
+    return preferred;
+  }
+  const slotIndex = Math.floor(Date.now() / (3 * 3600 * 1000)) % mp4Files.length;
+  return mp4Files[slotIndex];
+}
 
 function resolveVideoPath() {
   if (process.env.VIDEO_PATH && process.env.VIDEO_PATH !== 'auto') {
@@ -46,15 +75,13 @@ function resolveVideoPath() {
       .filter(f => ALLOWED_VIDEOS.includes(f))
       .sort();
     if (mp4Files.length > 0) {
-      // Rotación determinística en 3 turnos diarios (bloques de 8 horas) para publicar los 3 videos oficiales cada día
-      const slotIndex = Math.floor(Date.now() / (8 * 3600 * 1000)) % mp4Files.length;
-      const chosen = mp4Files[slotIndex];
+      const chosen = selectVideoByUtcSchedule(mp4Files);
       console.log(`🎬 Videos oficiales en videos/: [${mp4Files.join(', ')}] -> Seleccionado: ${chosen}`);
       return path.join(VIDEOS_DIR, chosen);
     }
   }
 
-  return path.join(VIDEOS_DIR, '01_mario_galaxy.mp4');
+  return path.join(VIDEOS_DIR, '01_fortnite_juego_150_hombre.mp4');
 }
 
 /**
@@ -67,9 +94,8 @@ function createFreshVideoFingerprint(srcPath) {
     fs.mkdirSync(outDir, { recursive: true });
     const stamp = Date.now();
     const freshPath = path.join(outDir, `fresh_${stamp}_${path.basename(srcPath)}`);
-    // Variación sutil e imperceptible al ojo humano: zoom 1.01x-1.02x + micro-ajuste de contraste/brillo + metadatos limpios
-    const brightness = ((stamp % 5) - 2) * 0.004; // -0.008 a +0.008
-    const contrast = 1.0 + ((stamp % 3) + 1) * 0.005; // 1.005 a 1.015
+    const brightness = ((stamp % 5) - 2) * 0.004;
+    const contrast = 1.0 + ((stamp % 3) + 1) * 0.005;
     const vf = `scale=732:1300,crop=720:1280,eq=brightness=${brightness.toFixed(4)}:contrast=${contrast.toFixed(4)}`;
     execFileSync(
       'ffmpeg',
@@ -111,10 +137,14 @@ function createFreshVideoFingerprint(srcPath) {
   return srcPath;
 }
 
+const IS_CHECK_ONLY = process.argv.includes('--check-config');
 const RAW_VIDEO_PATH = resolveVideoPath();
-const VIDEO_PATH = createFreshVideoFingerprint(RAW_VIDEO_PATH);
-const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(path.basename(RAW_VIDEO_PATH));
-const IS_REFERIDOS_VIDEO = /referidos|socios/i.test(path.basename(RAW_VIDEO_PATH));
+const VIDEO_PATH = IS_CHECK_ONLY ? RAW_VIDEO_PATH : createFreshVideoFingerprint(RAW_VIDEO_PATH);
+const RAW_BASENAME = path.basename(RAW_VIDEO_PATH);
+const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(RAW_BASENAME);
+const IS_REFERIDOS_VIDEO = /referidos|socios|afiliados/i.test(RAW_BASENAME);
+const IS_FORTNITE_VIDEO = /fortnite/i.test(RAW_BASENAME);
+const IS_MUJER_VIDEO = /mujer|bomber/i.test(RAW_BASENAME);
 
 // Ligas oficiales que SIEMPRE van en los campos de texto de las redes sociales
 const LINKS = {
@@ -127,27 +157,28 @@ const LINKS = {
 };
 
 const DREAMCRAFTERS_TITLE = IS_REFERIDOS_VIDEO
-  ? '💰🍄 ¿Y si en vez de pagar publicidad, te pagamos a ti? ¡Gana el 20% por recomendar DreamCrafters! 🎮'
+  ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti vía SPEI? ¡Programa de Socios DreamCrafters! 🎮✨'
   : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Crea GRATIS tu invitación interactiva de Minecraft! | DreamCrafters'
+  : IS_FORTNITE_VIDEO
+  ? '🦙💥 ¡Combo 2 en 1 de Fortnite Battle Royale por $150 MXN: Invitación Videojuego 3D + Video Saludo Personalizado! 🎮🏆'
   : '🍄✨ ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮 | DreamCrafters';
 
 const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
   ? [
-      '💰🍄 ¿Y si en vez de pagarle publicidad a las redes sociales, te pagamos ese dinero directamente a ti?',
+      '💰🪂 ¿Y si en vez de pagarle publicidad a las redes sociales, te pagamos ese 20% directamente a ti en tu cuenta bancaria?',
       '',
-      'En DreamCrafters creamos invitaciones que son videojuegos reales en el celular. Cuando una mamá la manda al grupo de WhatsApp del salón, ¡todas las demás quieren una igual para su fiesta! 🎮🌟',
+      'En DreamCrafters creamos invitaciones que son videojuegos reales en el celular (como nuestra nueva misión de Fortnite Battle Royale con Piñata 3D y Pase de Batalla VIP). Cuando una mamá la manda al grupo de WhatsApp del salón, ¡todas las demás quieren una igual para su fiesta! 🦙💥🎮',
       '',
-      '🔥 PROGRAMA DE SOCIOS DREAMCRAFTERS (20% DIRECTO):',
-      '1️⃣ Entra y genera tu enlace único en 30 segundos.',
-      '2️⃣ Registra tu CLABE o tarjeta donde quieres recibir tus depósitos.',
-      '3️⃣ Por cada invitación comprada desde tu link, ¡te transferimos el 20% directo vía SPEI, sin preguntas!',
+      '🔥 PROGRAMA DE SOCIOS DREAMCRAFTERS (20% DIRECTO VÍA SPEI):',
+      '1️⃣ Entra y genera tu enlace único en 30 segundos (100% gratis).',
+      '2️⃣ Registra tu CLABE donde quieres recibir tus ganancias.',
+      '3️⃣ Por cada invitación que compren desde tu link en grupos de mamás, colegios o salones de fiestas, ¡recibes el 20% directo vía SPEI, sin topes!',
       '',
       `👉 Genera tu link del 20% gratis aquí: ${LINKS.sociosSite}`,
-      `🌐 Catálogo de mundos interactivos: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo de Super Mario Galaxy: ${LINKS.marioDemo}`,
+      `🌐 Catálogo de invitaciones jugables: ${LINKS.mainSite}`,
       '',
-      '#DreamCrafters #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras #SalonesDeFiestas #SuperMarioGalaxy'
+      '#DreamCrafters #Fortnite #FortniteParty #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras #SalonesDeFiestas'
     ].join('\n')
   : IS_MINECRAFT_VIDEO
   ? [
@@ -165,38 +196,35 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
       '#DreamCrafters #MinecraftParty #InvitacionesDigitales #FiestasInfantiles #InvitacionesMinecraft #CumpleañosMinecraft'
     ].join('\n')
   : [
-      '🍄 ¿Te imaginas que yo mismo felicite a tu peque por su nombre e invite a todos sus amigos? ¡En DreamCrafters te llevas el Combo 2 en 1 de Super Mario Galaxy por solo $100 MXN! 🎮🌟',
+      `🪂🦙 ¡Atención escuadrón! ¿Te imaginas que ${IS_MUJER_VIDEO ? 'Brite Bomber' : 'el Capitán Jonesy'} convoque a todos los amigos de tu peque a su fiesta? ¡Conoce la nueva Invitación Videojuego 2 en 1 de Fortnite Battle Royale por solo $150 MXN! 🎮🏆`,
       '',
-      '1️⃣ Primero: Tus invitados abren tu link, saltan por el espacio y atrapan las 3 Super Estrellas en un minijuego 3D real.',
-      '2️⃣ Segundo: ¡Desbloquean la invitación con un VIDEO PERSONALIZADO donde Mario saluda a tu peque por su nombre, dice cuántos años cumple, la fecha de la fiesta y muestra la dirección en pantalla!',
-      '📍 Incluye Mapa GPS en Google Maps y confirmación en 1 toque a tu WhatsApp.',
+      '1️⃣ Primero: Tus invitados abren el link en su celular, saltan del Autobús de Batalla y disparan con mira táctica hasta reventar la Piñata Llama 3D en una Grieta Dimensional épica de ¡VICTORIA MAGISTRAL! 💥✨',
+      '2️⃣ Segundo: ¡Desbloquean las transmisiones secretas en video, el Mapa GPS del Punto de Caída, la cuenta regresiva de La Tormenta y descargan su Pase de Batalla VIP personalizado con su nombre antes de confirmar asistencia a tu WhatsApp!',
       '',
-      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
-      `👉 Pídela y personalízala en 1 minuto: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo y mira el video saludo en vivo: ${LINKS.marioDemo}`,
-      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
+      '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 (Videojuego Interactivo + Video Saludo) por solo $150 MXN!',
+      `👉 Pídela y personalízala hoy en: ${LINKS.mainSite}`,
+      `💰 Gana el 20% recomendando en grupos de mamás: ${LINKS.sociosSite}`,
       '',
-      '#DreamCrafters #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #InvitacionesMario #CumpleañosMarioBros #VideoSaludoMario'
+      '#DreamCrafters #Fortnite #FortniteBattleRoyale #CumpleañosFortnite #InvitacionesFortnite #InvitacionesDigitales #FiestasInfantiles #VictoriaMagistral'
     ].join('\n');
 
 const TCT_CROSSPROMO_TITLE = IS_REFERIDOS_VIDEO
-  ? '💰🚀 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti? | Programa de Socios DreamCrafters'
+  ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI a ti? | Programa de Socios DreamCrafters'
   : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Regalamos invitaciones interactivas de Minecraft que se juegan en el celular! | DreamCrafters'
-  : '🚀 ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮🌟 | DreamCrafters';
+  : '🦙💥 ¡Invitación Videojuego 3D de Fortnite Battle Royale + Pase de Batalla VIP por $150 MXN! 🎮🏆 | DreamCrafters';
 
 const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
   ? [
-      '💰🍄 ¿Y si en vez de pagarle publicidad a las redes, te pagamos el 20% directamente a ti?',
+      '💰🪂 ¿Y si en vez de pagarle publicidad a las redes, te pagamos el 20% directamente a ti vía SPEI?',
       '',
-      'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🎮🌟',
+      'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego (como la nueva de Fortnite Battle Royale con Piñata 3D y Pase de Batalla VIP) que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🎮🏆',
       '',
       `👉 Activa tu link y registra tu CLABE en 30 segundos: ${LINKS.sociosSite}`,
       `🌐 Ver catálogo de invitaciones jugables: ${LINKS.mainSite}`,
-      `🕹️ Demo Super Mario Galaxy: ${LINKS.marioDemo}`,
       `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
       '',
-      '#DreamCrafters #TalentoConTarifa #FiestasInfantiles #InvitacionesDigitales #Afiliados #IngresosExtra #SuperMarioGalaxy #Reels #Shorts'
+      '#DreamCrafters #TalentoConTarifa #Fortnite #FiestasInfantiles #InvitacionesDigitales #Afiliados #IngresosExtra #Reels #Shorts'
     ].join('\n')
   : IS_MINECRAFT_VIDEO
   ? [
@@ -212,21 +240,20 @@ const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
       '#DreamCrafters #Minecraft #InvitacionesDigitales #FiestasInfantiles #TalentoConTarifa #Reels #Shorts'
     ].join('\n')
   : [
-      '🍄 ¡Mamma mia! En DreamCrafters armamos el Combo 2 en 1 definitivo de Super Mario Galaxy por solo $100 MXN 🎮🌟',
+      `🪂🦙 ¡Victoria Magistral en la fiesta de tu peque! En DreamCrafters lanzamos el Combo 2 en 1 de Fortnite Battle Royale (${IS_MUJER_VIDEO ? 'Edición Brite Bomber' : 'Edición Capitán Jonesy'}) por solo $150 MXN 🎮🏆`,
       '',
-      '1️⃣ Tus invitados juegan en su celular atrapando las 3 Super Estrellas en gravedad cero.',
-      '2️⃣ ¡Al ganar desbloquean la invitación con un VIDEO PERSONALIZADO donde Mario felicita al cumpleañero por su nombre, dice cuántos años cumple, la fecha y la dirección del salón, más mapa GPS y confirmación a WhatsApp!',
+      '1️⃣ Tus invitados abren el link en su celular, saltan del Autobús de Batalla y disparan con mira táctica hasta romper la Piñata Llama 3D en una Grieta Dimensional épica.',
+      '2️⃣ ¡Al lograr la Victoria Magistral desbloquean el Video Saludo, el Mapa GPS del Punto de Caída y descargan su propio Pase de Batalla VIP personalizado antes de confirmar a tu WhatsApp!',
       '',
-      '🔥 PROMO LANZAMIENTO: ¡De $250 a solo $100 MXN con entrega inmediata!',
+      '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 por solo $150 MXN!',
       `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
-      `🕹️ Juega el demo con video saludo: ${LINKS.marioDemo}`,
-      `💰 Gana el 20% recomendando: ${LINKS.sociosSite}`,
+      `💰 Gana el 20% recomendando vía SPEI: ${LINKS.sociosSite}`,
       '',
       '─────────────────────────',
       '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
       `⚡ Digitaliza o automatiza tu negocio hoy: ${LINKS.tctSite}`,
       '',
-      '#DreamCrafters #TalentoConTarifa #SuperMarioGalaxy #InvitacionesDigitales #FiestasInfantiles #SuperMarioBros #Reels #Shorts'
+      '#DreamCrafters #TalentoConTarifa #Fortnite #FortniteBattleRoyale #InvitacionesDigitales #FiestasInfantiles #CumpleañosFortnite #Reels #Shorts'
     ].join('\n');
 
 async function main() {
@@ -261,6 +288,7 @@ async function main() {
 
   const results = {
     timestamp: new Date().toISOString(),
+    raw_video: RAW_BASENAME,
     selected_video: path.basename(VIDEO_PATH),
     links_included: LINKS,
     dreamcrafters: {
@@ -348,15 +376,14 @@ async function main() {
   const localTikTokBridge = path.resolve(__dirname, '..', 'krauge', 'krauge_tiktok_autopost.py');
   if (fs.existsSync(localTikTokBridge)) {
     try {
-      const { execFileSync } = require('child_process');
       console.log('🎵 Publicando directo a Público en TikTok Studio Web (puente local)...');
-      execFileSync('python', [localTikTokBridge, '--force-dc-video', path.basename(VIDEO_PATH)], {
+      execFileSync('python', [localTikTokBridge, '--force-dc-video', RAW_BASENAME], {
         stdio: 'inherit'
       });
       results.talento_con_tarifa.tiktok = {
         success: true,
         mode: 'TIKTOK_STUDIO_LOCAL',
-        video: path.basename(VIDEO_PATH)
+        video: RAW_BASENAME
       };
     } catch (err) {
       console.error('⚠️ Error en puente local TikTok Studio:', err.message);
@@ -365,7 +392,7 @@ async function main() {
   } else if (process.env.TIKTOK_REFRESH_TOKEN && process.env.TIKTOK_CLIENT_KEY) {
     try {
       results.talento_con_tarifa.tiktok = await publishVideoToTikTok(VIDEO_PATH, {
-        title: `${DREAMCRAFTERS_TITLE} 👉 ${LINKS.mainSite} | Demo Mario: ${LINKS.marioDemo} #DreamCrafters #SuperMarioGalaxy #Minecraft #TalentoConTarifa`
+        title: `${DREAMCRAFTERS_TITLE} 👉 ${LINKS.mainSite} | Socios 20%: ${LINKS.sociosSite} #DreamCrafters #Fortnite #FortniteBattleRoyale #TalentoConTarifa`
       });
     } catch (err) {
       console.error('⚠️ Error en TikTok (Talento con Tarifa):', err.message);
@@ -377,15 +404,16 @@ async function main() {
     try {
       results.talento_con_tarifa.youtube = await publishVideoToYouTube(VIDEO_PATH, {
         title: IS_REFERIDOS_VIDEO
-          ? '💰🍄 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti? | Socios DreamCrafters #Shorts'
+          ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI? | Socios DreamCrafters #Shorts'
           : IS_MINECRAFT_VIDEO
           ? '👑⚔️ ¡Invitación interactiva GRATIS de Minecraft! | DreamCrafters #Shorts'
-          : '🍄 ¡Combo 2 en 1 por $100: Invitación Videojuego + Video Saludo de Mario! 🎮 | DreamCrafters #Shorts',
+          : '🦙💥 ¡Combo 2 en 1 de Fortnite Battle Royale por $150 MXN: Invitación Videojuego 3D! 🎮🏆 #Shorts',
         description: TCT_CROSSPROMO_CAPTION,
         tags: [
           'DreamCrafters',
           'Invitaciones Digitales',
-          'Super Mario Galaxy',
+          'Fortnite',
+          'Fortnite Battle Royale',
           'Minecraft',
           'Fiestas Infantiles',
           'Talento con Tarifa',
