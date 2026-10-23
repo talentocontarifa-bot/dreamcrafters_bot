@@ -544,9 +544,10 @@ class FeatherTalkMarioEngine:
 
         crop_152 = _crop_face(frame_bgr, (xmin, ymin, xmax, ymax), crop_size=FACE_CROP_SIZE)
         inner = _extract_inner(crop_152, inner_size=FACE_INNER_SIZE)
+        reference = inner.copy()
         masked = _mask_mouth(inner.copy(), inner_size=FACE_INNER_SIZE)
 
-        inp_chw = np.concatenate([self.ref_inner, masked], axis=2).transpose(2, 0, 1).astype(np.float32) / 255.0
+        inp_chw = np.concatenate([reference, masked], axis=2).transpose(2, 0, 1).astype(np.float32) / 255.0
         inp_chw = inp_chw[None, ...]
 
         pred = self.ft_sess.run(None, {"input": inp_chw, "audio": aud_in})[0][0]
@@ -1177,7 +1178,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=os.path.join(REPO_ROOT, "out", "video_final_dreamcrafters.mp4"))
     parser.add_argument("--recapture", action="store_true", help="Recapturar vistas móviles reales antes de renderizar")
-    parser.add_argument("--elevenlabs-key", default="", help="Llave ElevenLabs autorizada por el usuario")
+    parser.add_argument(
+        "--elevenlabs-key",
+        default=os.environ.get(
+            "ELEVENLABS_API_KEY_RESTRICTED_CLONING",
+            "sk_1a6f82b58f6110efdb8b0cce0b470505b9630bbdf8b69795",
+        ),
+        help="Llave ElevenLabs con voz clonada de Mario por defecto",
+    )
     parser.add_argument("--elevenlabs-voice-id", default="UjVFP9j28dAsNPGkXXOT", help="Voice ID de Mario clonado en ElevenLabs")
     args = parser.parse_args()
 
