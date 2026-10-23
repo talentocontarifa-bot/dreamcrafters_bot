@@ -150,6 +150,7 @@ const IS_MUJER_VIDEO = /mujer|bomber/i.test(RAW_BASENAME);
 const LINKS = {
   mainSite: 'https://dreamcrafters.lat',
   sociosSite: 'https://dreamcrafters.lat/socios',
+  fortniteDemo: 'https://dreamcrafters.lat/invitacionfortnite/index.html',
   minecraftDemo: 'https://dreamcrafters.lat/invitacionminecraft/ian-level8',
   marioDemo: 'https://dreamcrafters.lat/invitacionmario/index.html',
   agentesDemo: 'https://dreamcrafters.lat/agentes_de_luz',
@@ -176,6 +177,7 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
       '3️⃣ Por cada invitación que compren desde tu link en grupos de mamás, colegios o salones de fiestas, ¡recibes el 20% directo vía SPEI, sin topes!',
       '',
       `👉 Genera tu link del 20% gratis aquí: ${LINKS.sociosSite}`,
+      `🕹️ Juega el nuevo demo de Fortnite Battle Royale: ${LINKS.fortniteDemo}`,
       `🌐 Catálogo de invitaciones jugables: ${LINKS.mainSite}`,
       '',
       '#DreamCrafters #Fortnite #FortniteParty #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras #SalonesDeFiestas'
@@ -203,6 +205,7 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
       '',
       '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 (Videojuego Interactivo + Video Saludo) por solo $150 MXN!',
       `👉 Pídela y personalízala hoy en: ${LINKS.mainSite}`,
+      `🕹️ Juega el demo de Fortnite y mira el video saludo en vivo: ${LINKS.fortniteDemo}`,
       `💰 Gana el 20% recomendando en grupos de mamás: ${LINKS.sociosSite}`,
       '',
       '#DreamCrafters #Fortnite #FortniteBattleRoyale #CumpleañosFortnite #InvitacionesFortnite #InvitacionesDigitales #FiestasInfantiles #VictoriaMagistral'
@@ -221,6 +224,7 @@ const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
       'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego (como la nueva de Fortnite Battle Royale con Piñata 3D y Pase de Batalla VIP) que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🎮🏆',
       '',
       `👉 Activa tu link y registra tu CLABE en 30 segundos: ${LINKS.sociosSite}`,
+      `🕹️ Juega el demo de Fortnite Battle Royale: ${LINKS.fortniteDemo}`,
       `🌐 Ver catálogo de invitaciones jugables: ${LINKS.mainSite}`,
       `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
       '',
@@ -247,6 +251,7 @@ const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
       '',
       '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 por solo $150 MXN!',
       `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
+      `🕹️ Juega el demo con video saludo en vivo: ${LINKS.fortniteDemo}`,
       `💰 Gana el 20% recomendando vía SPEI: ${LINKS.sociosSite}`,
       '',
       '─────────────────────────',
