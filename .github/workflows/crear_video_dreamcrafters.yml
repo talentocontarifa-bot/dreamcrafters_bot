@@ -12,11 +12,13 @@ on:
         type: boolean
         default: true
   schedule:
-    - cron: '30 14 * * *' # 09:30 AM Cancún (Turno 1 — Fortnite Juego $150 Hombre: Capitán Jonesy)
-    - cron: '30 17 * * *' # 12:30 PM Cancún (Turno 2 — Fortnite Afiliados 20% Hombre: Capitán Jonesy)
-    - cron: '30 20 * * *' # 03:30 PM Cancún (Turno 3 — Fortnite Juego $150 Mujer: Brite Bomber)
-    - cron: '30 23 * * *' # 06:30 PM Cancún (Turno 4 — Fortnite Afiliados 20% Mujer: Brite Bomber)
-    - cron: '0 2 * * *'   # 09:00 PM Cancún (Turno 5 — Minecraft Gratis: Rey Steve)
+    - cron: '30 13 * * *' # 08:30 AM Cancún (Turno 1 — Volver al Futuro 88 MPH Juego $150: Marty McFly)
+    - cron: '30 15 * * *' # 10:30 AM Cancún (Turno 2 — Volver al Futuro 88 MPH Afiliados 20%: Marty McFly)
+    - cron: '30 17 * * *' # 12:30 PM Cancún (Turno 3 — Fortnite Juego $150 Hombre: Capitán Jonesy)
+    - cron: '30 19 * * *' # 02:30 PM Cancún (Turno 4 — Fortnite Afiliados 20% Hombre: Capitán Jonesy)
+    - cron: '30 21 * * *' # 04:30 PM Cancún (Turno 5 — Fortnite Juego $150 Mujer: Brite Bomber)
+    - cron: '30 23 * * *' # 06:30 PM Cancún (Turno 6 — Fortnite Afiliados 20% Mujer: Brite Bomber)
+    - cron: '0 2 * * *'   # 09:00 PM Cancún (Turno 7 — Minecraft Gratis: Rey Steve)
 
 concurrency:
   group: dreamcrafters-video-publication

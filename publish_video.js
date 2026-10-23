@@ -29,25 +29,33 @@ const ALLOWED_VIDEOS = [
   '02_rey_steve_minecraft_gratis.mp4',
   '03_fortnite_afiliados_20_hombre.mp4',
   '04_fortnite_juego_150_mujer.mp4',
-  '05_fortnite_afiliados_20_mujer.mp4'
+  '05_fortnite_afiliados_20_mujer.mp4',
+  '06_volver_al_futuro_juego_150.mp4',
+  '07_volver_al_futuro_afiliados_20.mp4'
 ];
 
 function selectVideoByUtcSchedule(mp4Files) {
   const utcHour = new Date().getUTCHours();
-  // Mapeo determinístico de los 5 turnos diarios (UTC):
-  // - 14:30 UTC (09:30 AM Cancún): 01_fortnite_juego_150_hombre.mp4
-  // - 17:30 UTC (12:30 PM Cancún): 03_fortnite_afiliados_20_hombre.mp4
-  // - 20:30 UTC (03:30 PM Cancún): 04_fortnite_juego_150_mujer.mp4
+  // Mapeo determinístico de los turnos diarios (UTC):
+  // - 13:30 UTC (08:30 AM Cancún): 06_volver_al_futuro_juego_150.mp4 (Volver al Futuro 88 MPH $150)
+  // - 15:30 UTC (10:30 AM Cancún): 07_volver_al_futuro_afiliados_20.mp4 (Volver al Futuro Afiliados 20%)
+  // - 17:30 UTC (12:30 PM Cancún): 01_fortnite_juego_150_hombre.mp4
+  // - 19:30 UTC (02:30 PM Cancún): 03_fortnite_afiliados_20_hombre.mp4
+  // - 21:30 UTC (04:30 PM Cancún): 04_fortnite_juego_150_mujer.mp4
   // - 23:30 UTC (06:30 PM Cancún): 05_fortnite_afiliados_20_mujer.mp4
   // - 02:00 UTC (09:00 PM Cancún): 02_rey_steve_minecraft_gratis.mp4
-  let preferred = '01_fortnite_juego_150_hombre.mp4';
-  if (utcHour >= 13 && utcHour < 16) {
+  let preferred = '06_volver_al_futuro_juego_150.mp4';
+  if (utcHour >= 12 && utcHour < 15) {
+    preferred = '06_volver_al_futuro_juego_150.mp4';
+  } else if (utcHour >= 15 && utcHour < 17) {
+    preferred = '07_volver_al_futuro_afiliados_20.mp4';
+  } else if (utcHour >= 17 && utcHour < 19) {
     preferred = '01_fortnite_juego_150_hombre.mp4';
-  } else if (utcHour >= 16 && utcHour < 19) {
+  } else if (utcHour >= 19 && utcHour < 21) {
     preferred = '03_fortnite_afiliados_20_hombre.mp4';
-  } else if (utcHour >= 19 && utcHour < 22) {
+  } else if (utcHour >= 21 && utcHour < 23) {
     preferred = '04_fortnite_juego_150_mujer.mp4';
-  } else if (utcHour >= 22 || utcHour < 1) {
+  } else if (utcHour >= 23 || utcHour < 1) {
     preferred = '05_fortnite_afiliados_20_mujer.mp4';
   } else {
     preferred = '02_rey_steve_minecraft_gratis.mp4';
@@ -144,12 +152,14 @@ const RAW_BASENAME = path.basename(RAW_VIDEO_PATH);
 const IS_MINECRAFT_VIDEO = /steve|minecraft/i.test(RAW_BASENAME);
 const IS_REFERIDOS_VIDEO = /referidos|socios|afiliados/i.test(RAW_BASENAME);
 const IS_FORTNITE_VIDEO = /fortnite/i.test(RAW_BASENAME);
+const IS_BTTF_VIDEO = /volver_al_futuro|bttf|marty|delorean/i.test(RAW_BASENAME);
 const IS_MUJER_VIDEO = /mujer|bomber/i.test(RAW_BASENAME);
 
 // Ligas oficiales que SIEMPRE van en los campos de texto de las redes sociales
 const LINKS = {
   mainSite: 'https://dreamcrafters.lat',
   sociosSite: 'https://dreamcrafters.lat/socios',
+  bttfDemo: 'https://dreamcrafters.lat/invitacionvolveralfuturo/index.html',
   fortniteDemo: 'https://dreamcrafters.lat/invitacionfortnite/index.html',
   minecraftDemo: 'https://dreamcrafters.lat/invitacionminecraft/ian-level8',
   marioDemo: 'https://dreamcrafters.lat/invitacionmario/index.html',
@@ -158,18 +168,20 @@ const LINKS = {
 };
 
 const DREAMCRAFTERS_TITLE = IS_REFERIDOS_VIDEO
-  ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti vía SPEI? ¡Programa de Socios DreamCrafters! 🎮✨'
+  ? '💰⚡ ¿Y si en vez de pagar publicidad, te pagamos el 20% a ti vía SPEI? ¡Programa de Socios DreamCrafters! 🎮✨'
   : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Crea GRATIS tu invitación interactiva de Minecraft! | DreamCrafters'
+  : IS_BTTF_VIDEO
+  ? '🚗⚡ ¡Combo 2 en 1 de Volver al Futuro 88 MPH por $150 MXN: Cabina DeLorean 360° + Video Saludo de Marty McFly! 🔥⏳'
   : IS_FORTNITE_VIDEO
   ? '🦙💥 ¡Combo 2 en 1 de Fortnite Battle Royale por $150 MXN: Invitación Videojuego 3D + Video Saludo Personalizado! 🎮🏆'
   : '🍄✨ ¡Combo 2 en 1 por $100 MXN: Invitación Videojuego + Video Saludo Personalizado de Mario! 🎮 | DreamCrafters';
 
 const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
   ? [
-      '💰🪂 ¿Y si en vez de pagarle publicidad a las redes sociales, te pagamos ese 20% directamente a ti en tu cuenta bancaria?',
+      '💰⚡ ¿Y si en vez de pagarle publicidad a las redes sociales, te pagamos ese 20% directamente a ti en tu cuenta bancaria?',
       '',
-      'En DreamCrafters creamos invitaciones que son videojuegos reales en el celular (como nuestra nueva misión de Fortnite Battle Royale con Piñata 3D y Pase de Batalla VIP). Cuando una mamá la manda al grupo de WhatsApp del salón, ¡todas las demás quieren una igual para su fiesta! 🦙💥🎮',
+      'En DreamCrafters creamos invitaciones que son videojuegos reales en el celular (como nuestra nueva misión de Volver al Futuro acelerando el DeLorean a 88 MPH en 360° y Fortnite Battle Royale con Piñata 3D). Cuando una mamá la manda al grupo de WhatsApp del salón, ¡todas las demás quieren una igual para su fiesta! 🚗⚡🎮',
       '',
       '🔥 PROGRAMA DE SOCIOS DREAMCRAFTERS (20% DIRECTO VÍA SPEI):',
       '1️⃣ Entra y genera tu enlace único en 30 segundos (100% gratis).',
@@ -177,10 +189,10 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
       '3️⃣ Por cada invitación que compren desde tu link en grupos de mamás, colegios o salones de fiestas, ¡recibes el 20% directo vía SPEI, sin topes!',
       '',
       `👉 Genera tu link del 20% gratis aquí: ${LINKS.sociosSite}`,
-      `🕹️ Juega el nuevo demo de Fortnite Battle Royale: ${LINKS.fortniteDemo}`,
+      `🚗 Juega el nuevo demo de Volver al Futuro 88 MPH: ${LINKS.bttfDemo}`,
       `🌐 Catálogo de invitaciones jugables: ${LINKS.mainSite}`,
       '',
-      '#DreamCrafters #Fortnite #FortniteParty #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras #SalonesDeFiestas'
+      '#DreamCrafters #VolverAlFuturo #BackToTheFuture #DeLorean #FiestasInfantiles #InvitacionesDigitales #IngresosExtra #MamasEmprendedoras'
     ].join('\n')
   : IS_MINECRAFT_VIDEO
   ? [
@@ -197,6 +209,20 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
       '',
       '#DreamCrafters #MinecraftParty #InvitacionesDigitales #FiestasInfantiles #InvitacionesMinecraft #CumpleañosMinecraft'
     ].join('\n')
+  : IS_BTTF_VIDEO
+  ? [
+      '🚗⚡ ¡Santos protones! ¿Te imaginas que Marty McFly invite a todos los amigos de tu peque a viajar en el tiempo a su fiesta? ¡Conoce la nueva Invitación Interactiva 2 en 1 de Volver al Futuro: 88 MPH por solo $150 MXN! 🔥⏳',
+      '',
+      '1️⃣ Primero: Tus invitados abren el link en su celular, entran a la cabina 360° del DeLorean y tocan la pantalla para acelerar hasta 88 MPH (1.21 Gigawatts) saltando por el túnel del tiempo 💥✨',
+      '2️⃣ Segundo: ¡Aterrizan en la fiesta y desbloquean el Cuadro de Saludo en Video HD de Marty McFly, el Tablero de Circuitos del Tiempo, el Mapa GPS y descargan su Placa California VIP personalizada antes de confirmar asistencia a tu WhatsApp!',
+      '',
+      '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 (Cabina 360° DeLorean + Video Saludo de Marty) por solo $150 MXN!',
+      `👉 Pídela y personalízala hoy en: ${LINKS.mainSite}`,
+      `🚗 Juega el demo del DeLorean a 88 MPH en vivo: ${LINKS.bttfDemo}`,
+      `💰 Gana el 20% recomendando en grupos de mamás: ${LINKS.sociosSite}`,
+      '',
+      '#DreamCrafters #VolverAlFuturo #BackToTheFuture #MartyMcFly #DeLorean #InvitacionesDigitales #FiestasInfantiles #CumpleañosTematico'
+    ].join('\n')
   : [
       `🪂🦙 ¡Atención escuadrón! ¿Te imaginas que ${IS_MUJER_VIDEO ? 'Brite Bomber' : 'el Capitán Jonesy'} convoque a todos los amigos de tu peque a su fiesta? ¡Conoce la nueva Invitación Videojuego 2 en 1 de Fortnite Battle Royale por solo $150 MXN! 🎮🏆`,
       '',
@@ -212,23 +238,25 @@ const DREAMCRAFTERS_CAPTION = IS_REFERIDOS_VIDEO
     ].join('\n');
 
 const TCT_CROSSPROMO_TITLE = IS_REFERIDOS_VIDEO
-  ? '💰🪂 ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI a ti? | Programa de Socios DreamCrafters'
+  ? '💰⚡ ¿Y si en vez de pagar publicidad, te pagamos el 20% vía SPEI a ti? | Programa de Socios DreamCrafters'
   : IS_MINECRAFT_VIDEO
   ? '👑⚔️ ¡Regalamos invitaciones interactivas de Minecraft que se juegan en el celular! | DreamCrafters'
+  : IS_BTTF_VIDEO
+  ? '🚗⚡ ¡Invitación Interactiva 360° de Volver al Futuro (88 MPH) + Saludo de Marty McFly por $150 MXN! 🔥⏳ | DreamCrafters'
   : '🦙💥 ¡Invitación Videojuego 3D de Fortnite Battle Royale + Pase de Batalla VIP por $150 MXN! 🎮🏆 | DreamCrafters';
 
 const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
   ? [
-      '💰🪂 ¿Y si en vez de pagarle publicidad a las redes, te pagamos el 20% directamente a ti vía SPEI?',
+      '💰⚡ ¿Y si en vez de pagarle publicidad a las redes, te pagamos el 20% directamente a ti vía SPEI?',
       '',
-      'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego (como la nueva de Fortnite Battle Royale con Piñata 3D y Pase de Batalla VIP) que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🎮🏆',
+      'Con el Programa de Socios de DreamCrafters, por cada invitación videojuego (como la nueva de Volver al Futuro 88 MPH en cabina 360° o Fortnite Battle Royale) que compren desde tu enlace personal en grupos de mamás, colegios o salones de fiestas, recibes el 20% de comisión directa vía SPEI 🚗⚡🏆',
       '',
       `👉 Activa tu link y registra tu CLABE en 30 segundos: ${LINKS.sociosSite}`,
-      `🕹️ Juega el demo de Fortnite Battle Royale: ${LINKS.fortniteDemo}`,
+      `🚗 Juega el demo de Volver al Futuro 88 MPH: ${LINKS.bttfDemo}`,
       `🌐 Ver catálogo de invitaciones jugables: ${LINKS.mainSite}`,
       `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
       '',
-      '#DreamCrafters #TalentoConTarifa #Fortnite #FiestasInfantiles #InvitacionesDigitales #Afiliados #IngresosExtra #Reels #Shorts'
+      '#DreamCrafters #TalentoConTarifa #VolverAlFuturo #BackToTheFuture #FiestasInfantiles #InvitacionesDigitales #Afiliados #IngresosExtra #Reels #Shorts'
     ].join('\n')
   : IS_MINECRAFT_VIDEO
   ? [
@@ -242,6 +270,24 @@ const TCT_CROSSPROMO_CAPTION = IS_REFERIDOS_VIDEO
       `⚡ Impulsado por Talento con Tarifa: ${LINKS.tctSite}`,
       '',
       '#DreamCrafters #Minecraft #InvitacionesDigitales #FiestasInfantiles #TalentoConTarifa #Reels #Shorts'
+    ].join('\n')
+  : IS_BTTF_VIDEO
+  ? [
+      '🚗⚡ ¡Viaja a 88 MPH en la fiesta de tu peque! En DreamCrafters lanzamos el Combo 2 en 1 de Volver al Futuro: 88 MPH con Marty McFly por solo $150 MXN 🔥⏳',
+      '',
+      '1️⃣ Tus invitados abren el link en su celular, entran a la cabina 360° del DeLorean y aceleran hasta 88 MPH con 1.21 Gigawatts.',
+      '2️⃣ ¡Al saltar en el tiempo desbloquean el Cuadro de Saludo en Video de Marty McFly, los Circuitos del Tiempo, el Mapa GPS y descargan su Placa California VIP antes de confirmar a tu WhatsApp!',
+      '',
+      '🔥 PROMO LANZAMIENTO: ¡Combo 2 en 1 por solo $150 MXN!',
+      `👉 Personalízala al instante aquí: ${LINKS.mainSite}`,
+      `🚗 Juega el demo con cabina 360° en vivo: ${LINKS.bttfDemo}`,
+      `💰 Gana el 20% recomendando vía SPEI: ${LINKS.sociosSite}`,
+      '',
+      '─────────────────────────',
+      '🤖 Desarrollo interactivo y automatización con IA impulsado por Talento con Tarifa.',
+      `⚡ Digitaliza o automatiza tu negocio hoy: ${LINKS.tctSite}`,
+      '',
+      '#DreamCrafters #TalentoConTarifa #VolverAlFuturo #BackToTheFuture #DeLorean #InvitacionesDigitales #FiestasInfantiles #Reels #Shorts'
     ].join('\n')
   : [
       `🪂🦙 ¡Victoria Magistral en la fiesta de tu peque! En DreamCrafters lanzamos el Combo 2 en 1 de Fortnite Battle Royale (${IS_MUJER_VIDEO ? 'Edición Brite Bomber' : 'Edición Capitán Jonesy'}) por solo $150 MXN 🎮🏆`,
