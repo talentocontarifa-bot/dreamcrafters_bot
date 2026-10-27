@@ -34,7 +34,24 @@ const ALLOWED_VIDEOS = [
   '07_volver_al_futuro_afiliados_20.mp4'
 ];
 
+const ROTATION_ORDER = [
+  '06_volver_al_futuro_juego_150.mp4',
+  '07_volver_al_futuro_afiliados_20.mp4',
+  '01_fortnite_juego_150_hombre.mp4',
+  '03_fortnite_afiliados_20_hombre.mp4',
+  '04_fortnite_juego_150_mujer.mp4',
+  '05_fortnite_afiliados_20_mujer.mp4',
+  '02_rey_steve_minecraft_gratis.mp4'
+];
+
 function selectVideoByUtcSchedule(mp4Files) {
+  const runNum = Number(process.env.GITHUB_RUN_NUMBER);
+  if (Number.isFinite(runNum) && runNum > 0) {
+    const ordered = ROTATION_ORDER.filter(v => mp4Files.includes(v));
+    if (ordered.length > 0) {
+      return ordered[runNum % ordered.length];
+    }
+  }
   const utcHour = new Date().getUTCHours();
   // Mapeo determinístico de los turnos diarios (UTC):
   // - 13:30 UTC (08:30 AM Cancún): 06_volver_al_futuro_juego_150.mp4 (Volver al Futuro 88 MPH $150)
